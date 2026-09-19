@@ -319,6 +319,16 @@ def render_text(result: ComparisonResult) -> str:
         lines.append(f"* {verdict_line(c)}")
         if c.equivalence:
             lines.append(f"    equivalence: {c.equivalence.interpretation}")
+
+    # Notes carry the validation warnings and the pairing exclusions. A console
+    # comparison that printed only verdicts would hide exactly the context that
+    # decides whether the verdicts mean anything.
+    disagreement_messages = {d["message"] for d in result.disagreements}
+    notes = [n for n in dict.fromkeys(result.notes) if n not in disagreement_messages]
+    if notes:
+        lines.append("")
+        for note in notes:
+            lines.append(f"! {note}")
     if result.disagreements:
         lines.append("")
         for d in result.disagreements:

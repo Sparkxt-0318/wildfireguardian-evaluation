@@ -141,3 +141,13 @@ def test_code_version_identifies_the_package_and_its_revision():
     assert text.startswith(f"wg-eval {__version__}")
     # In a git checkout the revision is appended; outside one it is omitted.
     assert text == f"wg-eval {__version__}" or "(git " in text
+
+
+def test_console_rendering_surfaces_validation_warnings(records, config):
+    """A comparison that hid the coverage warning would hide why it matters."""
+    worlds = sorted(records["world_id"].unique())[:6]
+    partial = records[~((records["policy_id"] == "policy_b") & records["world_id"].isin(worlds))]
+    result = compare_policies(partial, config, metrics=["mean_loss"])
+    text = render_text(result)
+    assert "not evaluated on the same set of worlds" in text
+    assert "! " in text
