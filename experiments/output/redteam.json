@@ -1,0 +1,420 @@
+{
+  "seed": 20260919,
+  "runs": [
+    {
+      "scenario": {
+        "key": "resident_bootstrap_false_precision",
+        "title": "Resident-level bootstrap manufactures precision",
+        "trap": "Resampling residents treats 1,200 nested observations as 1,200 experiments and returns a confidence interval several times too narrow.",
+        "truth": "The design supplies 20 independent worlds. The true mean loss difference is +0.6.",
+        "defence": "Resample whole worlds; residents travel with the world they belong to."
+      },
+      "truth": {
+        "true_mean_loss_difference": 0.6,
+        "n_worlds": 20,
+        "observations_per_world": 60,
+        "world_sd": 4.0,
+        "interaction_sd": 1.2
+      },
+      "naive": {
+        "analysis": "iid bootstrap over residents, both arms independent",
+        "difference": 1.1613019892904202,
+        "ci": [
+          0.9017552178638619,
+          1.4211392871156754
+        ],
+        "width": 0.5193840692518135,
+        "n_units_claimed": 1200,
+        "measured_coverage_of_95pct_interval": 0.6166666666666667
+      },
+      "correct": {
+        "analysis": "paired world-level cluster bootstrap",
+        "difference": 1.161301989290421,
+        "ci": [
+          0.19206755052328583,
+          2.205402605130525
+        ],
+        "width": 2.0133350546072393,
+        "n_units": 20,
+        "measured_coverage_of_95pct_interval": 0.9
+      },
+      "findings": [
+        {
+          "finding": "resident-level resampling understates uncertainty",
+          "width_ratio": 3.876389696564051,
+          "detail": "The correct interval is 3.9x wider. The naive analysis claims 1200 independent units where the design supplies 20."
+        },
+        {
+          "finding": "the understatement shows up as under-coverage",
+          "resident_coverage": 0.6166666666666667,
+          "world_coverage": 0.9,
+          "detail": "Over 60 independent replications of the whole experiment, the nominal-95% resident-level interval covered the true difference 62% of the time; the world-level interval covered it 90% of the time."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 2400,
+      "lines": [
+        "records: 2400 observations in 20 worlds (60 observations per world per policy)",
+        "true mean loss difference (B - A): +0.600",
+        "",
+        "  WRONG  resident-level bootstrap: +1.161 [+0.902, +1.421]  width 0.519",
+        "  RIGHT  world-level paired bootstrap: +1.161 [+0.192, +2.205]  width 2.013",
+        "",
+        "  width ratio (right / wrong): 3.9x",
+        "  measured coverage over 60 replications -- resident: 62%, world: 90% (nominal 95%)",
+        "  design effect for policy_a: 1.9 (ICC 0.88, 40 observations worth 21 independent ones)"
+      ]
+    },
+    {
+      "scenario": {
+        "key": "world_bootstrap_correct",
+        "title": "World-level bootstrap is calibrated",
+        "trap": "A single interval proves nothing; calibration has to be measured over repeated experiments.",
+        "truth": "The true mean loss difference is +0.6 in every replication.",
+        "defence": "Measure coverage: a nominal 95% interval should contain the truth about 95% of the time."
+      },
+      "truth": {
+        "true_mean_loss_difference": 0.6,
+        "n_worlds": 20,
+        "observations_per_world": 60,
+        "world_sd": 4.0,
+        "interaction_sd": 1.2
+      },
+      "naive": {
+        "analysis": "iid bootstrap over residents (for contrast)",
+        "measured_coverage": 0.61
+      },
+      "correct": {
+        "analysis": "paired world-level cluster bootstrap",
+        "difference": 1.161301989290421,
+        "ci": [
+          0.19206755052328583,
+          2.205402605130525
+        ],
+        "covers_truth": 1,
+        "measured_coverage": 0.9,
+        "measured_coverage_60_worlds": 0.98,
+        "n_clusters": 20
+      },
+      "findings": [
+        {
+          "finding": "world-level cluster bootstrap is approximately calibrated",
+          "measured_coverage": 0.9,
+          "nominal": 0.95,
+          "detail": "Across 100 replications the nominal-95% world-level interval covered the true difference 90% of the time at 20 worlds and 98% at 60 worlds. The percentile bootstrap under-covers slightly when clusters are few, which is why the validator warns below 20 clusters rather than staying silent -- but it is calibrated in a way the resident-level interval never becomes, at any number of residents."
+        },
+        {
+          "finding": "more residents per world cannot fix a resident-level interval",
+          "detail": "The resident-level interval narrows as residents are added while its coverage stays broken, because the missing variance is between worlds. Only more worlds buy precision that is real."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 2400,
+      "lines": [
+        "true mean loss difference (B - A): +0.600",
+        "  world-level paired interval on this draw: [+0.192, +2.205] -> covers the truth",
+        "  measured coverage over 100 replications at 20 worlds: 90% (nominal 95%)",
+        "  measured coverage over 50 replications at 60 worlds: 98% (nominal 95%)",
+        "  for contrast, resident-level coverage: 61%",
+        "  mean interval width -- world: 1.723, resident: 0.659"
+      ]
+    },
+    {
+      "scenario": {
+        "key": "tail_risk_disagreement",
+        "title": "Mean favours A while tail risk favours B",
+        "trap": "policy_a has the lower average loss, so a mean-only report recommends it.",
+        "truth": "policy_a carries a 4% per-observation chance of a +60 loss; its 90% CVaR is far worse than policy_b's while its mean is 0.8 better.",
+        "defence": "Declare tail metrics up front and report the disagreement rather than resolving it silently."
+      },
+      "truth": {
+        "true_mean_loss_difference": 0.8,
+        "design": "policy_a shifts loss down by 3.2 but carries a 4% chance of a +60 catastrophe per observation, worth +2.4 on average -- a net mean advantage of 0.8 bought with a heavy tail",
+        "expected_direction": {
+          "mean": "policy_a",
+          "tail": "policy_b"
+        }
+      },
+      "naive": {
+        "analysis": "report mean loss only",
+        "favours": "policy_a",
+        "difference": 0.845819832335966,
+        "ci": [
+          0.3654625479185852,
+          1.3315377334237701
+        ],
+        "conclusion_if_reported_alone": "mean_loss: policy_a beats policy_b. The 95% paired interval for policy_b - policy_a is (0.3655, 1.332) and excludes 0."
+      },
+      "correct": {
+        "analysis": "report mean and tail together",
+        "mean_favours": "policy_a",
+        "cvar90_favours": "policy_b",
+        "cvar90_difference": -2.70874403491103,
+        "cvar90_ci": [
+          -4.710092227919923,
+          -1.2164219884764942
+        ],
+        "disagreements": [
+          {
+            "kind": "central_vs_tail",
+            "baseline": "policy_a",
+            "candidate": "policy_b",
+            "column": "loss",
+            "central_metric": "mean_loss",
+            "central_favours": "policy_a",
+            "tail_metric": "cvar90_loss",
+            "tail_favours": "policy_b",
+            "message": "TAIL DISAGREEMENT on `loss`: mean_loss favours policy_a while cvar90_loss favours policy_b. Average performance and tail risk point in opposite directions; reporting either alone would mislead."
+          },
+          {
+            "kind": "metric_split",
+            "baseline": "policy_a",
+            "candidate": "policy_b",
+            "favours": [
+              "policy_a",
+              "policy_b"
+            ],
+            "by_metric": {
+              "mean_loss": "policy_a",
+              "cvar90_loss": "policy_b",
+              "success_rate": "policy_a"
+            },
+            "message": "METRIC SPLIT for policy_b vs policy_a: different declared metrics resolve in favour of different policies (mean_loss->policy_a, cvar90_loss->policy_b, success_rate->policy_a). There is no single winner; the choice depends on which metric the decision actually cares about, and that must be declared in advance."
+          }
+        ]
+      },
+      "findings": [
+        {
+          "finding": "mean and tail resolve in opposite directions",
+          "mean_favours": "policy_a",
+          "tail_favours": "policy_b",
+          "detail": "Reporting either statistic alone yields a confident and opposite recommendation. The disagreement is the result, and the decision needs a pre-declared risk preference to resolve it."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 7200,
+      "lines": [
+        "  mean_loss   B - A = +0.846 [+0.365, +1.332] -> favours policy_a",
+        "  cvar90_loss B - A = -2.709 [-4.710, -1.216] -> favours policy_b",
+        "",
+        "  TAIL DISAGREEMENT on `loss`: mean_loss favours policy_a while cvar90_loss favours policy_b. Average performance and tail risk point in opposite directions; reporting either alone would mislead.",
+        "  METRIC SPLIT for policy_b vs policy_a: different declared metrics resolve in favour of different policies (mean_loss->policy_a, cvar90_loss->policy_b, success_rate->policy_a). There is no single winner; the choice depends on which metric the decision actually cares about, and that must be declared in advance."
+      ]
+    },
+    {
+      "scenario": {
+        "key": "practical_equivalence",
+        "title": "Practically equivalent, and provably so",
+        "trap": "The interval includes zero, so the report says 'no significant difference' and readers hear 'the same'.",
+        "truth": "The true difference is +0.03 against a practical margin of 0.40 -- real, and negligible.",
+        "defence": "TOST against the declared margin turns 'we failed to detect' into 'we established equivalence'."
+      },
+      "truth": {
+        "true_mean_loss_difference": 0.03,
+        "practical_margin": 0.4,
+        "design": "a real but negligible difference, with enough worlds to resolve it"
+      },
+      "naive": {
+        "analysis": "declare 'no difference' because the interval includes zero",
+        "p_two_sided": 0.8853333333333333,
+        "ci": [
+          -0.10683388627573266,
+          0.09696405797076907
+        ],
+        "why_wrong": "An interval that includes zero is consistent with zero and with every other value it contains. Without a margin it cannot distinguish 'the same' from 'we did not look hard enough'."
+      },
+      "correct": {
+        "analysis": "TOST against a declared practical margin",
+        "margin": 0.4,
+        "tost_interval": [
+          -0.09097320992335449,
+          0.08148586376985723
+        ],
+        "conclusion": "equivalent",
+        "interpretation": "Equivalent within +/-0.4: the 90% interval for the difference (-0.09097, 0.08149) lies entirely inside the declared practical margin.",
+        "verdict": "equivalent"
+      },
+      "findings": [
+        {
+          "finding": "equivalence requires a margin, and with one it is concludable",
+          "margin": 0.4,
+          "conclusion": "equivalent",
+          "detail": "Equivalent within +/-0.4: the 90% interval for the difference (-0.09097, 0.08149) lies entirely inside the declared practical margin."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 24000,
+      "lines": [
+        "  true difference: +0.030, declared practical margin: +/-0.4",
+        "  paired difference: -0.0055 [-0.1068, +0.0970]  (bootstrap p = 0.885)",
+        "",
+        "  WRONG  'p > 0.05, therefore the policies are the same.'",
+        "  RIGHT  Equivalent within +/-0.4: the 90% interval for the difference (-0.09097, 0.08149) lies entirely inside the declared practical margin.",
+        "  verdict: equivalent -- mean_loss: policy_b and policy_a are practically equivalent within +/-0.4. The interval (-0.09097, 0.08149) fits inside the margin."
+      ]
+    },
+    {
+      "scenario": {
+        "key": "missing_worlds_reverse_ranking",
+        "title": "Missing worlds reverse the ranking",
+        "trap": "policy_b has no results on the 22 hardest worlds; comparing each policy over its own worlds makes the worse policy look better.",
+        "truth": "policy_b is worse by +1.2 mean loss on every world.",
+        "defence": "Pair on the worlds both policies ran, and record every world excluded."
+      },
+      "truth": {
+        "true_mean_loss_difference": 1.2,
+        "dropped_worlds": [
+          "w0022",
+          "w0024",
+          "w0050",
+          "w0010",
+          "w0058",
+          "w0051",
+          "w0029",
+          "w0048",
+          "w0046",
+          "w0043",
+          "w0047",
+          "w0038",
+          "w0011",
+          "w0042",
+          "w0056",
+          "w0020",
+          "w0013",
+          "w0035",
+          "w0057",
+          "w0052",
+          "w0032",
+          "w0054"
+        ],
+        "n_dropped": 22,
+        "design": "policy_b has no results on the 22 hardest worlds -- the pattern produced by runs that crash, time out, or are quietly excluded"
+      },
+      "naive": {
+        "analysis": "compare each policy over whatever worlds it has",
+        "difference": -1.8617480590959632,
+        "ci": [
+          -3.1467819986086316,
+          -0.7700556235391781
+        ],
+        "favours": "policy_b"
+      },
+      "correct": {
+        "analysis": "paired comparison restricted to worlds both policies ran",
+        "difference": 0.9483734120604828,
+        "ci": [
+          0.6224596062266705,
+          1.2656478131820428
+        ],
+        "favours": "policy_a",
+        "n_common_worlds": 38,
+        "excluded_worlds": 22
+      },
+      "findings": [
+        {
+          "finding": "the missing worlds, not the policies, drive the unpaired ranking",
+          "unpaired_difference": -1.8617480590959632,
+          "paired_difference": 0.9483734120604828,
+          "true_difference": 1.2,
+          "detail": "policy_b is absent from the 22 hardest worlds. Comparing each policy over its own world set credits policy_b with the easy material it happened to be given."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 7350,
+      "lines": [
+        "  true difference (B - A): +1.200 (positive = B is worse)",
+        "  policy_b is missing from 22 of 60 worlds -- the hardest ones",
+        "",
+        "  WRONG  unpaired over available worlds: -1.862 [-3.147, -0.770] -> favours policy_b",
+        "  RIGHT  paired on the 38 shared worlds: +0.948 [+0.622, +1.266] -> favours policy_a",
+        "",
+        "  The ranking reverses. Nothing about either policy changed; only which worlds were counted."
+      ]
+    },
+    {
+      "scenario": {
+        "key": "easier_worlds_confound",
+        "title": "A policy wins only because it was tested on easier worlds",
+        "trap": "policy_a was run mostly on flat worlds and policy_b mostly on steep ones; pooling the two makes policy_a look better.",
+        "truth": "policy_b is better by -1.5 mean loss on identical worlds.",
+        "defence": "Pair on shared worlds, print the allocation ledger, and report per stratum."
+      },
+      "truth": {
+        "true_mean_loss_difference": -1.5,
+        "design": "policy_a ran on 30 flat worlds and 6 steep; policy_b on 30 steep and 6 flat. Only 12 worlds carry both.",
+        "n_common_worlds": 12
+      },
+      "naive": {
+        "analysis": "pool every world each policy ran and compare the means",
+        "difference": 3.223343992612379,
+        "ci": [
+          2.136641302180027,
+          4.47920469643261
+        ],
+        "favours": "policy_a"
+      },
+      "correct": {
+        "analysis": "paired on shared worlds, plus the allocation ledger and per-stratum results",
+        "difference": -1.6934894412829404,
+        "ci": [
+          -2.0529705371572664,
+          -1.3711921507557214
+        ],
+        "favours": "policy_b",
+        "n_common_worlds": 12,
+        "allocation_balance": {
+          "checked": 1,
+          "column": "landscape",
+          "max_share_gap": 0.6666666666666667,
+          "worst_stratum": "flat",
+          "shares": {
+            "flat": {
+              "policy_a": 0.8333333333333334,
+              "policy_b": 0.16666666666666666
+            },
+            "steep": {
+              "policy_a": 0.16666666666666666,
+              "policy_b": 0.8333333333333334
+            }
+          }
+        },
+        "per_stratum_favours": {
+          "flat": "policy_b",
+          "steep": "policy_b"
+        }
+      },
+      "findings": [
+        {
+          "finding": "allocation, not policy quality, drives the pooled ranking",
+          "max_share_gap": 0.6666666666666667,
+          "detail": "The allocation table shows the policies were run on different terrain in different proportions. Pairing on the shared worlds and reporting per stratum both recover the true direction."
+        }
+      ],
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "n_records": 5400,
+      "lines": [
+        "  true difference (B - A): -1.500 (negative = B is better)",
+        "  allocation: policy_a ran on 30 flat worlds and 6 steep; policy_b on 30 steep and 6 flat. Only 12 worlds carry both.",
+        "",
+        "  WRONG  pooled over each policy's own worlds: +3.223 [+2.137, +4.479] -> favours policy_a",
+        "  RIGHT  paired on the 12 shared worlds: -1.693 [-2.053, -1.371] -> favours policy_b",
+        "",
+        "  allocation imbalance on `landscape`: 67% share gap",
+        "  stratum flat: favours policy_b",
+        "  stratum steep: favours policy_b"
+      ]
+    }
+  ]
+}

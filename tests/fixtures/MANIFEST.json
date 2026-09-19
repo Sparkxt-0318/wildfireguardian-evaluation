@@ -1,0 +1,43 @@
+{
+  "seed": 20260919,
+  "fixtures": {
+    "paired_balanced.parquet": {
+      "checksum": "sha256:18631341130e001f8850bb2de6c04fb172e345550e34b7c800272d852938f811",
+      "n_rows": 1440,
+      "truth": {
+        "true_mean_loss_difference": 0.6,
+        "n_worlds": 24
+      },
+      "description": "clean, balanced, fully paired"
+    },
+    "missing_worlds.csv": {
+      "checksum": "sha256:bced53761b558401c80c39a537c25c529758b82cd7d3c506b7d15688d1485888",
+      "n_rows": 800,
+      "truth": {
+        "true_mean_loss_difference": 1.2,
+        "n_worlds": 24,
+        "policy_b_missing_from": [
+          "w0019",
+          "w0011",
+          "w0009",
+          "w0003",
+          "w0002",
+          "w0008",
+          "w0007",
+          "w0022"
+        ]
+      },
+      "description": "policy_b absent from the hardest worlds; unpaired analysis reverses"
+    },
+    "invalid_records.csv": {
+      "checksum": "sha256:2fd109c1133f5fe318735e7dd53423596db72016b1a74171bfd123340917a2f4",
+      "n_rows": 74,
+      "expected_validation_errors": [
+        "duplicate_records",
+        "broken_nesting",
+        "non_binary_outcome"
+      ],
+      "description": "must fail validation"
+    }
+  }
+}

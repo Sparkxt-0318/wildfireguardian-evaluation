@@ -1,0 +1,216 @@
+{
+  "seed": 20260919,
+  "code_version": "wg-eval 0.1.0",
+  "demonstrations": [
+    {
+      "scenario": "resident_bootstrap_false_precision",
+      "records": "/home/user/wildfireguardian-evaluation/experiments/output/data/resident_bootstrap_false_precision.parquet",
+      "checksum": "sha256:010a21f565fad7370435a9008d5118523629b26e9bfa3a5fa430fbdb56fdced1",
+      "n_records": 2400,
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "naive": {
+        "analysis": "iid bootstrap over residents, both arms independent",
+        "difference": 1.1613019892904202,
+        "ci": [
+          0.9017552178638619,
+          1.4211392871156754
+        ],
+        "width": 0.5193840692518135,
+        "n_units_claimed": 1200,
+        "measured_coverage_of_95pct_interval": 0.6166666666666667
+      },
+      "correct": {
+        "analysis": "paired world-level cluster bootstrap",
+        "difference": 1.161301989290421,
+        "ci": [
+          0.19206755052328583,
+          2.205402605130525
+        ],
+        "width": 2.0133350546072393,
+        "n_units": 20,
+        "measured_coverage_of_95pct_interval": 0.9
+      },
+      "findings": [
+        {
+          "finding": "resident-level resampling understates uncertainty",
+          "width_ratio": 3.876389696564051,
+          "detail": "The correct interval is 3.9x wider. The naive analysis claims 1200 independent units where the design supplies 20."
+        },
+        {
+          "finding": "the understatement shows up as under-coverage",
+          "resident_coverage": 0.6166666666666667,
+          "world_coverage": 0.9,
+          "detail": "Over 60 independent replications of the whole experiment, the nominal-95% resident-level interval covered the true difference 62% of the time; the world-level interval covered it 90% of the time."
+        }
+      ],
+      "truth": {
+        "true_mean_loss_difference": 0.6,
+        "n_worlds": 20,
+        "observations_per_world": 60,
+        "world_sd": 4.0,
+        "interaction_sd": 1.2
+      }
+    },
+    {
+      "scenario": "world_bootstrap_correct",
+      "records": "/home/user/wildfireguardian-evaluation/experiments/output/data/world_bootstrap_correct.parquet",
+      "checksum": "sha256:010a21f565fad7370435a9008d5118523629b26e9bfa3a5fa430fbdb56fdced1",
+      "n_records": 2400,
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "naive": {
+        "analysis": "iid bootstrap over residents (for contrast)",
+        "measured_coverage": 0.61
+      },
+      "correct": {
+        "analysis": "paired world-level cluster bootstrap",
+        "difference": 1.161301989290421,
+        "ci": [
+          0.19206755052328583,
+          2.205402605130525
+        ],
+        "covers_truth": true,
+        "measured_coverage": 0.9,
+        "measured_coverage_60_worlds": 0.98,
+        "n_clusters": 20
+      },
+      "findings": [
+        {
+          "finding": "world-level cluster bootstrap is approximately calibrated",
+          "measured_coverage": 0.9,
+          "nominal": 0.95,
+          "detail": "Across 100 replications the nominal-95% world-level interval covered the true difference 90% of the time at 20 worlds and 98% at 60 worlds. The percentile bootstrap under-covers slightly when clusters are few, which is why the validator warns below 20 clusters rather than staying silent -- but it is calibrated in a way the resident-level interval never becomes, at any number of residents."
+        },
+        {
+          "finding": "more residents per world cannot fix a resident-level interval",
+          "detail": "The resident-level interval narrows as residents are added while its coverage stays broken, because the missing variance is between worlds. Only more worlds buy precision that is real."
+        }
+      ],
+      "truth": {
+        "true_mean_loss_difference": 0.6,
+        "n_worlds": 20,
+        "observations_per_world": 60,
+        "world_sd": 4.0,
+        "interaction_sd": 1.2
+      }
+    },
+    {
+      "scenario": "practical_equivalence",
+      "records": "/home/user/wildfireguardian-evaluation/experiments/output/data/practical_equivalence.parquet",
+      "checksum": "sha256:94e2b38f3181dc9efe1ec2e4908ab0ec7dc31786867fd8f75884fea4e5f10e16",
+      "n_records": 24000,
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "naive": {
+        "analysis": "declare 'no difference' because the interval includes zero",
+        "p_two_sided": 0.8853333333333333,
+        "ci": [
+          -0.10683388627573266,
+          0.09696405797076907
+        ],
+        "why_wrong": "An interval that includes zero is consistent with zero and with every other value it contains. Without a margin it cannot distinguish 'the same' from 'we did not look hard enough'."
+      },
+      "correct": {
+        "analysis": "TOST against a declared practical margin",
+        "margin": 0.4,
+        "tost_interval": [
+          -0.09097320992335449,
+          0.08148586376985723
+        ],
+        "conclusion": "equivalent",
+        "interpretation": "Equivalent within +/-0.4: the 90% interval for the difference (-0.09097, 0.08149) lies entirely inside the declared practical margin.",
+        "verdict": "equivalent"
+      },
+      "findings": [
+        {
+          "finding": "equivalence requires a margin, and with one it is concludable",
+          "margin": 0.4,
+          "conclusion": "equivalent",
+          "detail": "Equivalent within +/-0.4: the 90% interval for the difference (-0.09097, 0.08149) lies entirely inside the declared practical margin."
+        }
+      ],
+      "truth": {
+        "true_mean_loss_difference": 0.03,
+        "practical_margin": 0.4,
+        "design": "a real but negligible difference, with enough worlds to resolve it"
+      }
+    },
+    {
+      "scenario": "tail_risk_disagreement",
+      "records": "/home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet",
+      "checksum": "sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160",
+      "n_records": 7200,
+      "trap_reproduced": true,
+      "defence_worked": true,
+      "passed": true,
+      "naive": {
+        "analysis": "report mean loss only",
+        "favours": "policy_a",
+        "difference": 0.845819832335966,
+        "ci": [
+          0.3654625479185852,
+          1.3315377334237701
+        ],
+        "conclusion_if_reported_alone": "mean_loss: policy_a beats policy_b. The 95% paired interval for policy_b - policy_a is (0.3655, 1.332) and excludes 0."
+      },
+      "correct": {
+        "analysis": "report mean and tail together",
+        "mean_favours": "policy_a",
+        "cvar90_favours": "policy_b",
+        "cvar90_difference": -2.70874403491103,
+        "cvar90_ci": [
+          -4.710092227919923,
+          -1.2164219884764942
+        ],
+        "disagreements": [
+          {
+            "kind": "central_vs_tail",
+            "baseline": "policy_a",
+            "candidate": "policy_b",
+            "column": "loss",
+            "central_metric": "mean_loss",
+            "central_favours": "policy_a",
+            "tail_metric": "cvar90_loss",
+            "tail_favours": "policy_b",
+            "message": "TAIL DISAGREEMENT on `loss`: mean_loss favours policy_a while cvar90_loss favours policy_b. Average performance and tail risk point in opposite directions; reporting either alone would mislead."
+          },
+          {
+            "kind": "metric_split",
+            "baseline": "policy_a",
+            "candidate": "policy_b",
+            "favours": [
+              "policy_a",
+              "policy_b"
+            ],
+            "by_metric": {
+              "mean_loss": "policy_a",
+              "cvar90_loss": "policy_b",
+              "success_rate": "policy_a"
+            },
+            "message": "METRIC SPLIT for policy_b vs policy_a: different declared metrics resolve in favour of different policies (mean_loss->policy_a, cvar90_loss->policy_b, success_rate->policy_a). There is no single winner; the choice depends on which metric the decision actually cares about, and that must be declared in advance."
+          }
+        ]
+      },
+      "findings": [
+        {
+          "finding": "mean and tail resolve in opposite directions",
+          "mean_favours": "policy_a",
+          "tail_favours": "policy_b",
+          "detail": "Reporting either statistic alone yields a confident and opposite recommendation. The disagreement is the result, and the decision needs a pre-declared risk preference to resolve it."
+        }
+      ],
+      "truth": {
+        "true_mean_loss_difference": 0.8,
+        "design": "policy_a shifts loss down by 3.2 but carries a 4% chance of a +60 catastrophe per observation, worth +2.4 on average -- a net mean advantage of 0.8 bought with a heavy tail",
+        "expected_direction": {
+          "mean": "policy_a",
+          "tail": "policy_b"
+        }
+      }
+    }
+  ]
+}
