@@ -9,7 +9,7 @@
 - **Resampling**: 1500 bootstrap resamples of whole `world`s, seed `20260919`, method `percentile`, 95% intervals
 - **Pairing**: paired on shared clusters
 - **Missing data**: `drop_record`
-- **Code**: wg-eval 0.1.0 (git de836e8+dirty)
+- **Code**: wg-eval 0.1.0 (git a5ae2b6)
 
 ### Design
 
@@ -155,8 +155,8 @@ Allocation ledger (how many worlds of each stratum each policy actually ran):
 <details><summary><code>mean_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git de836e8+dirty)
-created_at: 2026-09-19T18:08:09+00:00
+code_version: wg-eval 0.1.0 (git a5ae2b6)
+created_at: 2026-09-19T18:09:34+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -166,7 +166,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:e3375edd17b57b911a9e4a9248bd063c9d12e4d83b6ceb38541efffbd296f124
+fingerprint: sha256:66b06651cd6f98f9c949de0e93a62f357e21ac7b22062f1674d794029b4116cb
 ```
 
 </details>
@@ -174,8 +174,8 @@ fingerprint: sha256:e3375edd17b57b911a9e4a9248bd063c9d12e4d83b6ceb38541efffbd296
 <details><summary><code>cvar90_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git de836e8+dirty)
-created_at: 2026-09-19T18:08:09+00:00
+code_version: wg-eval 0.1.0 (git a5ae2b6)
+created_at: 2026-09-19T18:09:35+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -185,7 +185,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:bd63bf48fca7eb3063e8f95fa6246442d6677f868175c7f649cb07bb24780cd3
+fingerprint: sha256:732bfbebb72c03c23117280a1e3b4ef2dc519ccf7395862aacf1a4458886ff1e
 ```
 
 </details>
@@ -193,8 +193,8 @@ fingerprint: sha256:bd63bf48fca7eb3063e8f95fa6246442d6677f868175c7f649cb07bb2478
 <details><summary><code>p90_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git de836e8+dirty)
-created_at: 2026-09-19T18:08:09+00:00
+code_version: wg-eval 0.1.0 (git a5ae2b6)
+created_at: 2026-09-19T18:09:35+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -204,7 +204,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:f44e2c7e4b80e785a18e11b7efab75174d74fabfaca91bf3ab9211e838b7891d
+fingerprint: sha256:c179110ccd82a73594ca72e7edf9261cd09677a05bdd523521090d0c3fee7c85
 ```
 
 </details>
@@ -212,8 +212,8 @@ fingerprint: sha256:f44e2c7e4b80e785a18e11b7efab75174d74fabfaca91bf3ab9211e838b7
 <details><summary><code>success_rate</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git de836e8+dirty)
-created_at: 2026-09-19T18:08:09+00:00
+code_version: wg-eval 0.1.0 (git a5ae2b6)
+created_at: 2026-09-19T18:09:35+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -223,7 +223,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:d496c6895f515c1ffbaaa03cc63330ad31842adacf62c2a3f546276c8f3ff1d7
+fingerprint: sha256:f782651971b88381a25a3a35812f31d5f741b47bc40bf3ba5da3e01e94a6d79c
 ```
 
 </details>
