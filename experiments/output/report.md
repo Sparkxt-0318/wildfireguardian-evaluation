@@ -9,7 +9,7 @@
 - **Resampling**: 1500 bootstrap resamples of whole `world`s, seed `20260919`, method `percentile`, 95% intervals
 - **Pairing**: paired on shared clusters
 - **Missing data**: `drop_record`
-- **Code**: wg-eval 0.1.0
+- **Code**: wg-eval 0.1.0 (git de836e8+dirty)
 
 ### Design
 
@@ -155,8 +155,8 @@ Allocation ledger (how many worlds of each stratum each policy actually ran):
 <details><summary><code>mean_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0
-created_at: 2026-09-19T17:56:03+00:00
+code_version: wg-eval 0.1.0 (git de836e8+dirty)
+created_at: 2026-09-19T18:08:09+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -166,7 +166,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:55cf76415e7e89d5aea3b8432b33933f16a94d8033e3d533dc5b76092924105e
+fingerprint: sha256:e3375edd17b57b911a9e4a9248bd063c9d12e4d83b6ceb38541efffbd296f124
 ```
 
 </details>
@@ -174,8 +174,8 @@ fingerprint: sha256:55cf76415e7e89d5aea3b8432b33933f16a94d8033e3d533dc5b76092924
 <details><summary><code>cvar90_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0
-created_at: 2026-09-19T17:56:03+00:00
+code_version: wg-eval 0.1.0 (git de836e8+dirty)
+created_at: 2026-09-19T18:08:09+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -185,7 +185,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:6c0e8d2783da41254c5c78eca1df30275511b420044409bfe43086f04305ed0b
+fingerprint: sha256:bd63bf48fca7eb3063e8f95fa6246442d6677f868175c7f649cb07bb24780cd3
 ```
 
 </details>
@@ -193,8 +193,8 @@ fingerprint: sha256:6c0e8d2783da41254c5c78eca1df30275511b420044409bfe43086f04305
 <details><summary><code>p90_loss</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0
-created_at: 2026-09-19T17:56:03+00:00
+code_version: wg-eval 0.1.0 (git de836e8+dirty)
+created_at: 2026-09-19T18:08:09+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -204,7 +204,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:0518d9bfc8b60460b4cffbade8e2f8b7edcd10b34c6822ac1ce1ca4631062ae8
+fingerprint: sha256:f44e2c7e4b80e785a18e11b7efab75174d74fabfaca91bf3ab9211e838b7891d
 ```
 
 </details>
@@ -212,8 +212,8 @@ fingerprint: sha256:0518d9bfc8b60460b4cffbade8e2f8b7edcd10b34c6822ac1ce1ca463106
 <details><summary><code>success_rate</code> — policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0
-created_at: 2026-09-19T17:56:03+00:00
+code_version: wg-eval 0.1.0 (git de836e8+dirty)
+created_at: 2026-09-19T18:08:09+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:f23f0cb04377cc16f9d18cdf4eb05e905e550a8d23cc7f6d8e8146d536006160
 config: None (sha256:ceb047140c553b48fff28472fd13845194afc64b62d20125523e69c0016259a7)
@@ -223,7 +223,7 @@ bootstrap: 1500 resamples at world level, seed=20260919, method=percentile
 confidence_level: 0.95
 filters: none
 exclusions: none
-fingerprint: sha256:05eccd5e9c66bae64ed5bac2c96d63227c98b3575f28589a309580ed2ef35aed
+fingerprint: sha256:d496c6895f515c1ffbaaa03cc63330ad31842adacf62c2a3f546276c8f3ff1d7
 ```
 
 </details>

@@ -24,10 +24,14 @@ def _git_describe() -> str | None:
         if sha.returncode != 0:
             return None
         rev = sha.stdout.strip()
-        # Untracked files (generated reports, scratch data) are not code changes;
-        # only tracked modifications make the recorded version untrustworthy.
+        # "+dirty" must mean "the code differs from this commit", so the check is
+        # scoped to the package and its build metadata. Regenerating a tracked
+        # report changes the worktree without changing what produced the number.
         dirty = subprocess.run(
-            ["git", "-C", str(repo_root), "status", "--porcelain", "--untracked-files=no"],
+            [
+                "git", "-C", str(repo_root), "status", "--porcelain",
+                "--untracked-files=no", "--", "src", "pyproject.toml",
+            ],
             capture_output=True,
             text=True,
             timeout=5,

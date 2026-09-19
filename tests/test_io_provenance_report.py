@@ -132,3 +132,12 @@ def test_console_rendering_mentions_the_resampling_unit(records, config):
     text = render_text(result)
     assert "unit of inference: world" in text
     assert "bootstrap:" in text
+
+
+def test_code_version_identifies_the_package_and_its_revision():
+    from wg_eval.version import __version__, code_version
+
+    text = code_version()
+    assert text.startswith(f"wg-eval {__version__}")
+    # In a git checkout the revision is appended; outside one it is omitted.
+    assert text == f"wg-eval {__version__}" or "(git " in text

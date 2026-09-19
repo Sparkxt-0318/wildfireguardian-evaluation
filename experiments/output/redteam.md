@@ -1,6 +1,6 @@
 # Red-team scenarios
 
-seed `20260919` | wg-eval 0.1.0
+seed `20260919` | wg-eval 0.1.0 (git de836e8+dirty)
 
 Each scenario builds records with a known truth, runs the misleading analysis the records are designed to reward, and then runs the correct one.
 
