@@ -1,7 +1,7 @@
 {
   "manifest": {
-    "code_version": "wg-eval 0.1.0 (git 3d729e2+dirty)",
-    "analysis_config_hash": "sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd",
+    "code_version": "wg-eval 0.1.0 (git 7cf1924+dirty)",
+    "analysis_config_hash": "sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32",
     "source_data_hash": "sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e",
     "protocol_hash": "(none declared)",
     "report_generator_version": "report-1.0.0",
@@ -16,10 +16,10 @@
     }
   },
   "scientific_fingerprints": {
-    "mean_loss|policy_b": "sha256:a617ea2f4bfee0755048b50f3e8fbec0e2722a3ec217cb0edcda70728f500a73",
-    "cvar90_loss|policy_b": "sha256:f1e521dd4ffda19c9e4a005a24277851d27ad513fadde6b7a9f9fb2f2c1d0443",
-    "success_rate|policy_b": "sha256:e71875311689a14cbf1783a7653af4e69088ef88d3edae9abd6321b7dd68418e",
-    "p90_loss|policy_b": "sha256:0c88bf34e0f44efb7518e9c4ae29f4c1be0b17458da5404ebc28c42ce167ff71"
+    "mean_loss|policy_b": "sha256:c3065693d2ef0426f4551ee435f80525611ee5993d9693c73dee84cb077e5950",
+    "cvar90_loss|policy_b": "sha256:f76e8f8de056a87fba2065ac92406728f319ccfe6cb62cd84c64a7939b71514d",
+    "success_rate|policy_b": "sha256:fa6f49e523a63076b385de449cbfd37ad23537f56544f1d45169e628728d8525",
+    "p90_loss|policy_b": "sha256:d029ae32c1bd0acb1ce27838087d609c79cb38d1b121cf33d3329557fcf17928"
   },
   "source": {
     "path": "/home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet",

@@ -152,11 +152,16 @@ class InferenceSpec:
     def as_dict(self) -> dict[str, object]:
         return {"primary_unit": self.primary_unit, "nested_units": list(self.nested_units)}
 
+    @property
+    def chain(self) -> str:
+        """The declared levels as ``"a > b > c"``, coarsest first."""
+        return " > ".join(self.levels)
+
     def describe(self) -> str:
-        chain = " > ".join(self.levels)
+        levels = len(self.nested_units)
         return (
-            f"{chain}   (resampling unit: {self.primary_unit}; "
-            f"{len(self.nested_units)} nested level(s))"
+            f"{self.chain} (resampling unit: {self.primary_unit}; "
+            f"{levels} nested level{'' if levels == 1 else 's'})"
         )
 
 

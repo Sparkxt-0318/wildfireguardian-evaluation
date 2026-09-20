@@ -30,7 +30,7 @@ from wg_eval.compare import compare_policies
 from wg_eval.dataio import write_records
 from wg_eval.report import json_default, write_report
 from wg_eval.stratify import compare_by_stratum
-from wg_eval.synth.redteam import SCENARIOS, run_scenario
+from wg_eval.synth.redteam import SCENARIOS, _config, run_scenario
 from wg_eval.version import code_version
 
 DEMONSTRATIONS = [
@@ -162,7 +162,26 @@ def main() -> int:
     scenario = SCENARIOS["tail_risk_disagreement"]
     records, _ = scenario.build(args.seed)
     source = write_records(records, data_dir / "tail_risk_disagreement.parquet")
-    config = scenario.config()
+    # A fuller configuration than the scenario's own, so the report exercises
+    # declared margins, non-inferiority, a preregistration claim and a
+    # multiplicity correction as well as the contrasts themselves.
+    config = _config(
+        label="routine report",
+        seed=args.seed,
+        margins={
+            "mean_loss": {
+                "lower": 0.60,
+                "upper": 0.25,
+                "scale": "absolute",
+                "source": (
+                    "illustrative asymmetric tolerance, fixed in "
+                    "experiments/run_demonstration.py before the data were generated"
+                ),
+            }
+        },
+        secondary_correction="holm",
+    )
+    object.__setattr__(config.equivalence, "non_inferiority", ["mean_loss"])
     result = compare_policies(records, config, source=source)
     stratified = {
         column: compare_by_stratum(records, config, column, source=source)
@@ -181,9 +200,13 @@ def main() -> int:
         "wg-eval report experiments/output/data/tail_risk_disagreement.parquet analysis.yaml",
         "```",
         "",
-        "on the tail-risk dataset: design summary, filters and exclusions, verdicts, "
-        "metric disagreements, design effects, failure-mode breakdown, per-stratum "
-        "results with the allocation ledger, and a provenance block per metric.",
+        "on the tail-risk dataset, with an asymmetric margin and a Holm correction over the "
+        "declared secondary family: the design summary and run-status ledger, filters and "
+        "exclusions, findings ordered primary first, the estimand's conditioning, metric "
+        "disagreements, families and adjusted p-values, design effects and credibility flags, "
+        "the failure-mode breakdown, per-stratum results with the allocation ledger, and a "
+        "provenance block per metric carrying both fingerprints and the reproducibility "
+        "manifest.",
         "",
         CLOSING,
     ]

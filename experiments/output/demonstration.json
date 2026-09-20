@@ -1,6 +1,6 @@
 {
   "seed": 20260919,
-  "code_version": "wg-eval 0.1.0 (git 3d729e2+dirty)",
+  "code_version": "wg-eval 0.1.0 (git 7cf1924+dirty)",
   "demonstrations": [
     {
       "scenario": "observation_bootstrap_false_precision",
@@ -227,7 +227,7 @@
           0.3654625479185852,
           1.3315377334237701
         ],
-        "conclusion_if_reported_alone": "mean_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (0.3655, 1.332) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_id."
+        "conclusion_if_reported_alone": "mean_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (0.3655, 1.332) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_ids."
       },
       "correct": {
         "analysis": "report central and tail contrasts together, with both intervals",

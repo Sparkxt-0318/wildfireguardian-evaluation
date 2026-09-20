@@ -167,7 +167,7 @@ method name is rejected rather than silently substituted.
 
 | Situation | What goes wrong | What the library does |
 |---|---|---|
-| Few units | percentile endpoints are order statistics of few distinct resamples and under-cover | `few_units` warning below 20; unit count printed beside every interval |
+| Few units | percentile endpoints are order statistics of few distinct resamples and under-cover; for tail statistics the width is not even monotone in n | `few_units` warning below 20; unit count beside every interval; per-estimator credibility flags, because width alone cannot tell you a statistic is degenerate |
 | Heavy tails | extreme quantiles converge slowly | per-estimator credibility thresholds; `cvar` and `quantile` need ~20 units |
 | Skewed unit-level effects | percentile and BCa disagree materially | both available; BCa records any fallback |
 | Zero-inflated or bounded outcomes | reflected intervals leave the support | `bounds` declared per metric; violations reported, never clamped |

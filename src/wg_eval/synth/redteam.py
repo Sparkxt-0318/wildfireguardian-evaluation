@@ -1252,11 +1252,16 @@ def _demo_tiny(scenario: Scenario, seed: int) -> ScenarioRun:
             ),
         },
         {
-            "finding": "interval width shrinks with units, not with observations",
+            "finding": "the mean's interval narrows with units; the tail statistics' does not",
             "widths": widths.round(3).to_dict(),
             "detail": (
-                "Every design here has 160 observations per unit. Only the unit count changes, "
-                "and only the unit count narrows the intervals."
+                "Every design here has 160 observations per unit, so only the unit count "
+                "varies. The mean's interval narrows with it. The tail statistics' widths are "
+                "NOT monotone: at 5 units a 90% CVaR over 20 sub-unit values averages k=2 of "
+                "them and the bootstrap over 5 clusters is degenerate, so the interval can be "
+                "narrower at 5 units than at 10. A narrow interval from a degenerate statistic "
+                "is the worst of both worlds, and it is exactly what the credibility flag is "
+                "for -- width alone cannot tell you whether a statistic is usable."
             ),
         },
     ]
@@ -2011,11 +2016,14 @@ def _demo_metric_shopping(scenario: Scenario, seed: int) -> ScenarioRun:
         f"-> favours {primary.verdict.favours}",
     ]
     if best:
+        favours = best.verdict.favours or "nothing (the interval includes 0)"
+        adjusted = best.adjusted.get("p_adjusted")
         run.lines.append(
             f"  SHOPPED (exploratory) {best.metric.name}: {best.difference.estimate:+.3f} "
             f"[{best.difference.ci_low:+.3f}, {best.difference.ci_high:+.3f}] "
-            f"-> favours {best.verdict.favours}, raw p={best.difference.p_two_sided:.3f}, "
-            f"adjusted p={best.adjusted.get('p_adjusted')}"
+            f"-> favours {favours}; raw p={best.difference.p_two_sided:.3f}, "
+            f"Holm-adjusted p={adjusted:.3f} over the declared family of "
+            f"{best.adjusted.get('family_size')}"
         )
     run.lines += [
         "",
@@ -2037,8 +2045,8 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             key="observation_bootstrap_false_precision",
             title="Observation-level bootstrap manufactures precision",
-            trap="Resampling observations treats 1,200 nested rows as 1,200 experiments and "
-                 "returns an interval several times too narrow.",
+            trap="Resampling observations treats 1,200 nested rows as 1,200 experiments and, "
+                 "on this design, returns an interval about four times too narrow.",
             truth="The design supplies 20 independent units. The true mean loss difference "
                   "is +0.6.",
             defence="Resample whole units; observations travel with the unit they belong to.",
@@ -2055,7 +2063,7 @@ SCENARIOS: dict[str, Scenario] = {
             key="unit_bootstrap_calibration",
             title="Unit-level bootstrap coverage, with its Monte Carlo error",
             trap="One interval establishes nothing on its own, and a bare coverage "
-                 "percentage from 100 replications is read as if it were exact.",
+                 "percentage from a finite simulation is read as if it were exact.",
             truth="The true mean loss difference is +0.6 in every replication.",
             defence="Report empirical coverage with its Monte Carlo SE and a Wilson interval, "
                     "and compare coverage at two unit counts.",
@@ -2308,8 +2316,8 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             key="metric_selected_after_the_fact",
             title="Choosing the headline metric after seeing the results",
-            trap="Twelve exploratory metrics carry no effect, one of them looks favourable, and "
-                 "it becomes the headline.",
+            trap="Forty exploratory metrics carry no effect; thirteen of them point the "
+                 "desired way, and the most convincing becomes the headline.",
             truth="policy_b is genuinely worse on the declared primary metric by +0.55.",
             defence="Exactly one primary metric, reported first; every other finding labelled "
                     "with its role and corrected within its declared family.",

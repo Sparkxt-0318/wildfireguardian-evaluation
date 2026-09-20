@@ -343,7 +343,10 @@ def classify_difference(
     better_is_negative = direction == "lower_is_better"
     excludes_zero = (ci_low > 0.0) or (ci_high < 0.0)
     candidate_better = (difference < 0) if better_is_negative else (difference > 0)
-    paired_on = f", paired on {n_units} shared {unit_label}" if n_units is not None else ""
+    plural = "" if n_units == 1 else "s"
+    paired_on = (
+        f", paired on {n_units} shared {unit_label}{plural}" if n_units is not None else ""
+    )
 
     detail: dict[str, Any] = {
         "difference": _f(difference),

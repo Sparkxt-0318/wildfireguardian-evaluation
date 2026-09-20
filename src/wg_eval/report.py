@@ -125,8 +125,8 @@ def render_markdown(
     else:
         lines.append("- **Source**: records supplied in memory (no file checksum available)")
     lines += [
-        f"- **Inference structure**: `{cfg.inference.describe()}` (declared, and checked "
-        "against the records)",
+        f"- **Inference structure**: `{cfg.inference.chain}` — resampling unit "
+        f"`{unit}`, declared and checked against the records",
         f"- **Resampling**: {cfg.bootstrap.n_resamples} bootstrap resamples of whole "
         f"`{unit}`s, seed `{cfg.bootstrap.seed}`, method `{cfg.bootstrap.method}`"
         + (", two-stage" if cfg.bootstrap.hierarchical else "")

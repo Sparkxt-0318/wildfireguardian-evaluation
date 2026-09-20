@@ -174,7 +174,8 @@ class Provenance:
             lines.append(f"source: {self.source.get('path')}")
             lines.append(f"source_checksum: {self.source.get('checksum')}")
         if self.config:
-            lines.append(f"config: {self.config.get('path')} ({self.config.get('checksum')})")
+            path = self.config.get("path") or "(built in memory)"
+            lines.append(f"config: {path} ({self.config.get('checksum')})")
         if self.inference:
             lines.append(
                 f"inference: primary_unit={self.inference.get('primary_unit')} "

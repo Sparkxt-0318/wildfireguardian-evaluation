@@ -5,12 +5,12 @@
 - **Source**: `/home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet`
 - **Checksum**: `sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e`
 - **Rows**: 7200 (parquet)
-- **Inference structure**: `world_id > event_id > resident_id   (resampling unit: world_id; 2 nested level(s))` (declared, and checked against the records)
+- **Inference structure**: `world_id > event_id > resident_id` — resampling unit `world_id`, declared and checked against the records
 - **Resampling**: 1500 bootstrap resamples of whole `world_id`s, seed `20260919`, method `percentile`, 95% intervals
 - **Pairing**: paired on shared units
 - **Missing data**: policy `drop_record`, assumed mechanism `unknown`
 - **Analysis status**: `unspecified` -- not asserted to be preregistered
-- **Code**: wg-eval 0.1.0 (git 3d729e2+dirty) | report generator report-1.0.0
+- **Code**: wg-eval 0.1.0 (git 7cf1924+dirty) | report generator report-1.0.0
 
 ### Design
 
@@ -41,22 +41,24 @@ A run that did not complete is not automatically a missing value. Rows handled a
 
 **mean_loss** (lower_is_better, at `event_id` level)
 
-- mean_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (0.3655, 1.332) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_id.
+- mean_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (0.3655, 1.332) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_ids.
+- equivalence: Not equivalent: the 90% interval (0.4585, 1.272) lies entirely outside the declared margin (-0.6, +0.25), so the estimated difference exceeds what was declared negligible.
+  - The margin is asymmetric: 0.6 tolerated below zero, 0.25 above. The equivalence region is not centred on zero.
+- non-inferiority: Non-inferiority not established at the harmful-side margin 0.25 for a lower_is_better metric: one-sided 95% upper bound 1.272 is not below the harmful-side margin 0.25.
 - estimand conditioning: all 60 observed world_ids carry every policy
-- note: No practical margin declared for mean_loss; equivalence cannot be concluded for this metric however wide or narrow the interval is.
 
 ### Secondary outcomes
 
 **cvar90_loss** (lower_is_better, at `event_id` level)
 
-- cvar90_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (-4.71, -1.216) and excludes 0, favouring policy_b on this metric, paired on 60 shared world_id.
+- cvar90_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (-4.71, -1.216) and excludes 0, favouring policy_b on this metric, paired on 60 shared world_ids.
 - tail convention: summarises the **upper** tail, which is the harmful end for a `lower_is_better` metric
 - estimand conditioning: all 60 observed world_ids carry every policy
 - note: No practical margin declared for cvar90_loss; equivalence cannot be concluded for this metric however wide or narrow the interval is.
 
 **success_rate** (higher_is_better, at `resident_id` level)
 
-- success_rate: the 95% interval for the estimated difference (policy_b - policy_a) is (-0.0375, -0.003611) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_id.
+- success_rate: the 95% interval for the estimated difference (policy_b - policy_a) is (-0.0375, -0.003611) and excludes 0, favouring policy_a on this metric, paired on 60 shared world_ids.
 - estimand conditioning: all 60 observed world_ids carry every policy
 - note: No practical margin declared for success_rate; equivalence cannot be concluded for this metric however wide or narrow the interval is.
 
@@ -64,19 +66,19 @@ A run that did not complete is not automatically a missing value. Rows handled a
 
 **p90_loss** (lower_is_better, at `event_id` level)
 
-- p90_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (-2.31, 0.2484) and includes 0. No practical margin was declared, so equivalence cannot be assessed. This is 'undetermined', not a finding that the policies match, paired on 60 shared world_id.
+- p90_loss: the 95% interval for the estimated difference (policy_b - policy_a) is (-2.31, 0.2484) and includes 0. No practical margin was declared, so equivalence cannot be assessed. This is 'undetermined', not a finding that the policies match, paired on 60 shared world_ids.
 - tail convention: summarises the **upper** tail, which is the harmful end for a `lower_is_better` metric
 - estimand conditioning: all 60 observed world_ids carry every policy
 - note: No practical margin declared for p90_loss; equivalence cannot be concluded for this metric however wide or narrow the interval is.
 
 ### All contrasts
 
-| role        | metric       | better | contrast             | baseline | candidate | difference | 95% CI               | world_ids | margin | adj. p   | finding      |
-|-------------|--------------|--------|----------------------|----------|-----------|------------|----------------------|-----------|--------|----------|--------------|
-| primary     | mean_loss    | lower  | policy_b vs policy_a | 8.375    | 9.221     | 0.8458     | [0.3655, 1.332]      | 60        | none   | 0.00133  | worse        |
-| secondary   | cvar90_loss  | lower  | policy_b vs policy_a | 16.36    | 13.65     | -2.709     | [-4.71, -1.216]      | 60        | none   | 0.000666 | superior     |
-| secondary   | success_rate | higher | policy_b vs policy_a | 0.8275   | 0.8072    | -0.02028   | [-0.0375, -0.003611] | 60        | none   | 0.0187   | worse        |
-| exploratory | p90_loss     | lower  | policy_b vs policy_a | 13.47    | 12.38     | -1.089     | [-2.31, 0.2484]      | 60        | none   | 0.0933   | inconclusive |
+| role        | metric       | better | contrast             | baseline | candidate | difference | 95% CI               | world_ids | margin        | adj. p  | finding      |
+|-------------|--------------|--------|----------------------|----------|-----------|------------|----------------------|-----------|---------------|---------|--------------|
+| primary     | mean_loss    | lower  | policy_b vs policy_a | 8.375    | 9.221     | 0.8458     | [0.3655, 1.332]      | 60        | (-0.6, +0.25) | 0.00133 | worse        |
+| secondary   | cvar90_loss  | lower  | policy_b vs policy_a | 16.36    | 13.65     | -2.709     | [-4.71, -1.216]      | 60        | none          | 0.00133 | superior     |
+| secondary   | success_rate | higher | policy_b vs policy_a | 0.8275   | 0.8072    | -0.02028   | [-0.0375, -0.003611] | 60        | none          | 0.0187  | worse        |
+| exploratory | p90_loss     | lower  | policy_b vs policy_a | 13.47    | 12.38     | -1.089     | [-2.31, 0.2484]      | 60        | none          | 0.0933  | inconclusive |
 
 `adj. p` is adjusted within the declared role family; intervals are marginal and are not adjusted for multiplicity.
 
@@ -87,15 +89,15 @@ A run that did not complete is not automatically a missing value. Rows handled a
 
 ## 4. Analysis families and multiplicity
 
-| role        | test                              | method | family size | p (raw)  | p (adj)  | survives |
-|-------------|-----------------------------------|--------|-------------|----------|----------|----------|
-| primary     | mean_loss|policy_b_vs_policy_a    | none   | 1           | 0.00133  | 0.00133  | yes      |
-| secondary   | cvar90_loss|policy_b_vs_policy_a  | none   | 2           | 0.000666 | 0.000666 | yes      |
-| secondary   | success_rate|policy_b_vs_policy_a | none   | 2           | 0.0187   | 0.0187   | yes      |
-| exploratory | p90_loss|policy_b_vs_policy_a     | none   | 1           | 0.0933   | 0.0933   | no       |
+| role        | test                              | method | family size | p (raw)  | p (adj) | survives |
+|-------------|-----------------------------------|--------|-------------|----------|---------|----------|
+| primary     | mean_loss|policy_b_vs_policy_a    | none   | 1           | 0.00133  | 0.00133 | yes      |
+| secondary   | cvar90_loss|policy_b_vs_policy_a  | holm   | 2           | 0.000666 | 0.00133 | yes      |
+| secondary   | success_rate|policy_b_vs_policy_a | holm   | 2           | 0.0187   | 0.0187  | yes      |
+| exploratory | p90_loss|policy_b_vs_policy_a     | none   | 1           | 0.0933   | 0.0933  | no       |
 
 - The primary family of 1 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
-- The secondary family of 2 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
+- Holm correction applied across the declared secondary family of 2 test(s) at alpha=0.05. Confidence intervals shown elsewhere are marginal and are NOT adjusted for multiplicity.
 - The exploratory family of 1 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
 
 ## 5. Design diagnostics
@@ -220,7 +222,7 @@ A large shift means the paired analysis runs on a different mix of material than
 - CENTRAL AND TAIL CONTRASTS DISAGREE on `loss` (lower_is_better; the upper tail is the harmful one). mean_loss: +0.8458 [+0.3655, +1.332] favours policy_a. cvar90_loss: -2.709 [-4.71, -1.216] favours policy_b. Both contrasts are reported with their intervals; this library does not rank the two and implies no overall preference. Which one governs the decision is a declared risk preference, not a statistical result.
 - METRICS RESOLVE IN DIFFERENT DIRECTIONS for policy_b vs policy_a: mean_loss (primary) favours policy_a, cvar90_loss (secondary) favours policy_b, success_rate (secondary) favours policy_a. No single ranking follows; the primary metric declared in advance is the one the analysis was designed to answer.
 - The primary family of 1 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
-- The secondary family of 2 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
+- Holm correction applied across the declared secondary family of 2 test(s) at alpha=0.05. Confidence intervals shown elsewhere are marginal and are NOT adjusted for multiplicity.
 - The exploratory family of 1 test(s) is reported without multiplicity correction, as declared. Read it as that many separate comparisons.
 
 ## 9. Provenance and reproducibility
@@ -228,11 +230,11 @@ A large shift means the paired analysis runs on a different mix of material than
 <details><summary><code>mean_loss</code> (primary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-created_at: 2026-09-20T03:38:34+00:00
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+created_at: 2026-09-20T03:44:45+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd)
+config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -242,13 +244,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-analysis_config_hash: sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:a617ea2f4bfee0755048b50f3e8fbec0e2722a3ec217cb0edcda70728f500a73
-full_fingerprint: sha256:9d3f78596b0c45da749d3a8376ff954eaed22679fc90730cb757d79d422b9484
+scientific_fingerprint: sha256:c3065693d2ef0426f4551ee435f80525611ee5993d9693c73dee84cb077e5950
+full_fingerprint: sha256:779965943a0d323a17edb5f907a699e1e1eeceba760af496ac6f56ddc5ecdfdf
 ```
 
 </details>
@@ -256,11 +258,11 @@ full_fingerprint: sha256:9d3f78596b0c45da749d3a8376ff954eaed22679fc90730cb757d79
 <details><summary><code>cvar90_loss</code> (secondary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-created_at: 2026-09-20T03:38:34+00:00
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+created_at: 2026-09-20T03:44:45+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd)
+config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -270,13 +272,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-analysis_config_hash: sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:f1e521dd4ffda19c9e4a005a24277851d27ad513fadde6b7a9f9fb2f2c1d0443
-full_fingerprint: sha256:a311fcfe412461f32f74d85afd5082b82e9c9d5d4292a1b02c6e54fc3ec2b762
+scientific_fingerprint: sha256:f76e8f8de056a87fba2065ac92406728f319ccfe6cb62cd84c64a7939b71514d
+full_fingerprint: sha256:25bdbfc70de9128bb37dfdd3a87f1a17fdf70e42d674821d7fd6c9dd46e0fc7d
 ```
 
 </details>
@@ -284,11 +286,11 @@ full_fingerprint: sha256:a311fcfe412461f32f74d85afd5082b82e9c9d5d4292a1b02c6e54f
 <details><summary><code>success_rate</code> (secondary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-created_at: 2026-09-20T03:38:34+00:00
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+created_at: 2026-09-20T03:44:45+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd)
+config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at resident_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -298,13 +300,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-analysis_config_hash: sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:e71875311689a14cbf1783a7653af4e69088ef88d3edae9abd6321b7dd68418e
-full_fingerprint: sha256:6e7f9f1ac317a6c14079eadbb0532c26e5b1e51d90208ff5652af04c4b3c993b
+scientific_fingerprint: sha256:fa6f49e523a63076b385de449cbfd37ad23537f56544f1d45169e628728d8525
+full_fingerprint: sha256:e3286c9af6bab62037b5f7619e29f88422a3f7971aa3caa571e84a66174a9490
 ```
 
 </details>
@@ -312,11 +314,11 @@ full_fingerprint: sha256:6e7f9f1ac317a6c14079eadbb0532c26e5b1e51d90208ff5652af04
 <details><summary><code>p90_loss</code> (exploratory) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-created_at: 2026-09-20T03:38:34+00:00
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+created_at: 2026-09-20T03:44:46+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd)
+config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -326,13 +328,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 3d729e2+dirty)
-analysis_config_hash: sha256:b9cbaa3afdd6af4eaee33da42dee0b615740b0187345c33819d0aea590714edd
+code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:0c88bf34e0f44efb7518e9c4ae29f4c1be0b17458da5404ebc28c42ce167ff71
-full_fingerprint: sha256:9e6126d3ce0d622fd1d8986a6caf51743983f8433d7011da40d78e1c1a68c964
+scientific_fingerprint: sha256:d029ae32c1bd0acb1ce27838087d609c79cb38d1b121cf33d3329557fcf17928
+full_fingerprint: sha256:94eab5e5c342693def579c9d36b605dae1ce7e87e38c08c046a3d5446c723a74
 ```
 
 </details>

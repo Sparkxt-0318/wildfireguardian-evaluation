@@ -258,11 +258,16 @@ tail finding; suspect orientations raise `metric_orientation` warnings.
 
 ## F17 — Too few independent units
 
-**Measured.** Scenario `too_few_units`, at 5 units with 160 observations each:
-`mean_loss` is reported as credible, while `cvar90_loss` and `p90_loss` are
-flagged as not credible. Only the unit count changes across the sweep; the
-observation count per unit does not, and neither do the interval widths shrink
-with it.
+**Measured.** Scenario `too_few_units` sweeps 5, 10, 20 and 50 units at a fixed
+160 observations each. At 5 units `mean_loss` is credible while `cvar90_loss`
+and `p90_loss` are flagged.
+
+The sweep also shows why width is not a usable proxy for credibility: the tail
+statistics' intervals are **not monotone in n**. At 5 units a 90% CVaR over 20
+sub-unit values averages `k = 2` of them and the bootstrap over 5 clusters is
+degenerate, so its interval is *narrower* at 5 units (2.18) than at 10 (4.58). A
+narrow interval from a degenerate statistic is the worst of both worlds, which
+is precisely what the credibility flag exists to catch.
 
 **Defence.** Per-estimator credibility thresholds — 5 units for a mean, 20 for a
 CVaR or quantile, 30 for an extreme — rather than a universal minimum n, which
