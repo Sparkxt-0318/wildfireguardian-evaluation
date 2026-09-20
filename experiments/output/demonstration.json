@@ -1,6 +1,6 @@
 {
   "seed": 20260919,
-  "code_version": "wg-eval 0.1.0 (git 7cf1924+dirty)",
+  "code_version": "wg-eval 0.1.0 (git dce6565)",
   "demonstrations": [
     {
       "scenario": "observation_bootstrap_false_precision",

@@ -1,6 +1,6 @@
 # Mutation test audit
 
-wg-eval 0.1.0 (git 7cf1924+dirty)
+wg-eval 0.1.0 (git dce6565)
 
 A test suite that passes tells you nothing until you know it can fail. This audit
 introduces deliberate statistical errors -- the exact errors the library exists

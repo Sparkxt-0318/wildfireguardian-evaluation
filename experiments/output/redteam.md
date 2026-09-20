@@ -1,12 +1,12 @@
 # Red-team scenarios
 
-seed `20260919` | wg-eval 0.1.0 (git 3d729e2+dirty)
+seed `20260919` | wg-eval 0.1.0 (git dce6565)
 
 Each scenario builds records with a known truth, runs the misleading analysis the records are designed to reward, and then runs the correct one.
 
 ### observation_bootstrap_false_precision: Observation-level bootstrap manufactures precision
 
-TRAP       Resampling observations treats 1,200 nested rows as 1,200 experiments and returns an interval several times too narrow.
+TRAP       Resampling observations treats 1,200 nested rows as 1,200 experiments and, on this design, returns an interval about four times too narrow.
 TRUTH      The design supplies 20 independent units. The true mean loss difference is +0.6.
 DEFENCE    Resample whole units; observations travel with the unit they belong to.
 SUPPORTS   That the observation-level interval under-covers by a margin larger than Monte Carlo error at this number of replications.
@@ -28,7 +28,7 @@ Trap reproduced: **True** · Defence held: **True**
 
 ### unit_bootstrap_calibration: Unit-level bootstrap coverage, with its Monte Carlo error
 
-TRAP       One interval establishes nothing on its own, and a bare coverage percentage from 100 replications is read as if it were exact.
+TRAP       One interval establishes nothing on its own, and a bare coverage percentage from a finite simulation is read as if it were exact.
 TRUTH      The true mean loss difference is +0.6 in every replication.
 DEFENCE    Report empirical coverage with its Monte Carlo SE and a Wilson interval, and compare coverage at two unit counts.
 SUPPORTS   That coverage improves with more units and is consistent with nominal at 60 units.
@@ -312,7 +312,7 @@ Trap reproduced: **True** · Defence held: **True**
 
 ### metric_selected_after_the_fact: Choosing the headline metric after seeing the results
 
-TRAP       Twelve exploratory metrics carry no effect, one of them looks favourable, and it becomes the headline.
+TRAP       Forty exploratory metrics carry no effect; thirteen of them point the desired way, and the most convincing becomes the headline.
 TRUTH      policy_b is genuinely worse on the declared primary metric by +0.55.
 DEFENCE    Exactly one primary metric, reported first; every other finding labelled with its role and corrected within its declared family.
 SUPPORTS   The primary contrast, and that the favourable exploratory ones are consistent with noise.
@@ -321,9 +321,9 @@ STILL NOT  That the analysis was preregistered; `analysis_status` records the cl
   policy_b is genuinely worse on the declared primary metric. Forty exploratory columns carry no effect at all, and some of them will look favourable.
 
   PRIMARY (declared)  mean_loss: +0.421 [+0.083, +0.773] -> favours policy_a
-  SHOPPED (exploratory) noise_03: -0.074 [-0.160, +0.001] -> favours None, raw p=0.052, adjusted p=1.0
+  SHOPPED (exploratory) noise_03: -0.074 [-0.160, +0.001] -> favours nothing (the interval includes 0); raw p=0.052, Holm-adjusted p=1.000 over the declared family of 40
 
   13 of 40 noise metrics point at policy_b; 0 of them resolve at the 95% level
-  report order: primary section at char 1177, exploratory at 1646
+  report order: primary section at char 1149, exploratory at 1619
 
 Trap reproduced: **True** · Defence held: **True**

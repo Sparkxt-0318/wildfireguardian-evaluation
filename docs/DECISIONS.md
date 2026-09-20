@@ -36,14 +36,14 @@ schema.
 
 **Date** 2026-09-19 · **Status** Accepted · **Owner** Agent A
 
-**Decision.** `require_common_worlds: true` by default. Every excluded cluster
+**Decision.** `require_common_units: true` by default. Every excluded cluster
 is recorded. Setting it false is allowed and marks every downstream result
 `UNPAIRED`.
 
 **Considered and rejected**
 
 - *Unpaired by default.* World variance (SD 3–5) dwarfs policy effects
-  (0.03–1.5). Scenario `missing_worlds_reverse_ranking` shows a true +1.2
+  (0.03–1.5). Scenario `missing_units_reverse_ranking` shows a true +1.2
   disadvantage reported as a −1.9 advantage.
 - *Model the world effect instead of excluding.* A mixed model could use the
   unpaired worlds. It buys information at the cost of a distributional
@@ -259,7 +259,7 @@ and balanced.
   finite sample, and not reproducible by hand.
 
 **Reverses if.** A scenario needs deliberately confounded strata — in which
-case it should say so, as `easier_worlds_confound` does through `world_subset`.
+case it should say so, as `easier_units_confound` does through `unit_subset`.
 
 ---
 

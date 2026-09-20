@@ -10,7 +10,7 @@
 - **Pairing**: paired on shared units
 - **Missing data**: policy `drop_record`, assumed mechanism `unknown`
 - **Analysis status**: `unspecified` -- not asserted to be preregistered
-- **Code**: wg-eval 0.1.0 (git 7cf1924+dirty) | report generator report-1.0.0
+- **Code**: wg-eval 0.1.0 (git dce6565) | report generator report-1.0.0
 
 ### Design
 
@@ -230,11 +230,11 @@ A large shift means the paired analysis runs on a different mix of material than
 <details><summary><code>mean_loss</code> (primary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
-created_at: 2026-09-20T03:44:45+00:00
+code_version: wg-eval 0.1.0 (git dce6565)
+created_at: 2026-09-20T03:48:48+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
+config: (built in memory) (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -244,13 +244,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+code_version: wg-eval 0.1.0 (git dce6565)
 analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:c3065693d2ef0426f4551ee435f80525611ee5993d9693c73dee84cb077e5950
-full_fingerprint: sha256:779965943a0d323a17edb5f907a699e1e1eeceba760af496ac6f56ddc5ecdfdf
+scientific_fingerprint: sha256:e1f73a3039b0e0a2d24fbfc93fda192607300cd6e0b49baf2ec8bd0277c0ac90
+full_fingerprint: sha256:59d124262d3503594e9349c01bd105a2077f7d20cc8ab4391a9cb07c036b5f68
 ```
 
 </details>
@@ -258,11 +258,11 @@ full_fingerprint: sha256:779965943a0d323a17edb5f907a699e1e1eeceba760af496ac6f56d
 <details><summary><code>cvar90_loss</code> (secondary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
-created_at: 2026-09-20T03:44:45+00:00
+code_version: wg-eval 0.1.0 (git dce6565)
+created_at: 2026-09-20T03:48:48+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
+config: (built in memory) (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -272,13 +272,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+code_version: wg-eval 0.1.0 (git dce6565)
 analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:f76e8f8de056a87fba2065ac92406728f319ccfe6cb62cd84c64a7939b71514d
-full_fingerprint: sha256:25bdbfc70de9128bb37dfdd3a87f1a17fdf70e42d674821d7fd6c9dd46e0fc7d
+scientific_fingerprint: sha256:a62aac887ae9d213d010c645d500a61e8834c340bf4c76eac6ec54c47fe2de3b
+full_fingerprint: sha256:e99fe2bb83831e3f697bad80d33c5ebebebb966a683150df8018e9c501500232
 ```
 
 </details>
@@ -286,11 +286,11 @@ full_fingerprint: sha256:25bdbfc70de9128bb37dfdd3a87f1a17fdf70e42d674821d7fd6c9d
 <details><summary><code>success_rate</code> (secondary) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
-created_at: 2026-09-20T03:44:45+00:00
+code_version: wg-eval 0.1.0 (git dce6565)
+created_at: 2026-09-20T03:48:48+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
+config: (built in memory) (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at resident_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -300,13 +300,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+code_version: wg-eval 0.1.0 (git dce6565)
 analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:fa6f49e523a63076b385de449cbfd37ad23537f56544f1d45169e628728d8525
-full_fingerprint: sha256:e3286c9af6bab62037b5f7619e29f88422a3f7971aa3caa571e84a66174a9490
+scientific_fingerprint: sha256:07d58bcd5c1f57bbd889ee314ee47d0903417c21eae3b69294b0d8f7c6133898
+full_fingerprint: sha256:66603d01543aaf599c121e2f28130996a24ba1178c9afb2cceb43af7b6f03448
 ```
 
 </details>
@@ -314,11 +314,11 @@ full_fingerprint: sha256:e3286c9af6bab62037b5f7619e29f88422a3f7971aa3caa571e84a6
 <details><summary><code>p90_loss</code> (exploratory) -- policy_b vs policy_a</summary>
 
 ```
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
-created_at: 2026-09-20T03:44:46+00:00
+code_version: wg-eval 0.1.0 (git dce6565)
+created_at: 2026-09-20T03:48:49+00:00
 source: /home/user/wildfireguardian-evaluation/experiments/output/data/tail_risk_disagreement.parquet
 source_checksum: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
-config: None (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
+config: (built in memory) (sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32)
 inference: primary_unit=world_id nested=['event_id', 'resident_id']
 estimand: policy_b - policy_a at event_id level over world_id
 conditioning: all 60 observed world_ids carry every policy
@@ -328,13 +328,13 @@ confidence_level: 0.95
 filters: none
 exclusions: none
 --- reproducibility manifest ---
-code_version: wg-eval 0.1.0 (git 7cf1924+dirty)
+code_version: wg-eval 0.1.0 (git dce6565)
 analysis_config_hash: sha256:5a368c4e3d5adb1f8864ebd9fcbddca2e123d388cac0fad829819350e3a10d32
 source_data_hash: sha256:133103f98a752425a2980b4ba43fac1c2ef6d7f3d635e363ad7648ffc12bec7e
 protocol_hash: (none declared)
 report_generator_version: report-1.0.0
-scientific_fingerprint: sha256:d029ae32c1bd0acb1ce27838087d609c79cb38d1b121cf33d3329557fcf17928
-full_fingerprint: sha256:94eab5e5c342693def579c9d36b605dae1ce7e87e38c08c046a3d5446c723a74
+scientific_fingerprint: sha256:61f3cbf59655e93b6334abf0e9568a425351f8f102095717a8b6b36435ed19ec
+full_fingerprint: sha256:f95fc033bd4c7f05b38b328b24d40d2738d640bb517126f5fd08d1d3fa88865d
 ```
 
 </details>
