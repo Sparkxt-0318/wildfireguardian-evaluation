@@ -1,8 +1,10 @@
 """wg_eval -- an independent statistical evaluation library.
 
-This package knows nothing about wildfires, forecasting, routing, rescue or
-simulation.  It knows about *nested experiment records*: observations grouped
-into units, produced under policies.
+This package knows nothing about the process that produced its input -- not
+what the units represent, not what the policies do, not what an outcome means.
+It knows about *nested experiment records*: observations grouped into units,
+produced under policies.  Naming the domain belongs in the documentation, not
+in the statistical core.
 
 Its single purpose is to prevent misleading conclusions from such data.
 

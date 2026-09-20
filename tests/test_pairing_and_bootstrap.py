@@ -14,6 +14,7 @@ from wg_eval.bootstrap import (
     paired_cluster_bootstrap,
 )
 from wg_eval.config import AggregationSpec, MetricSpec
+from wg_eval.hierarchy import InferenceSpec
 from wg_eval.pairing import (
     ClusteredValues,
     build_paired_panel,
@@ -22,11 +23,12 @@ from wg_eval.pairing import (
     single_policy_values,
 )
 
-METRIC = MetricSpec(name="mean_loss", column="loss", estimator="mean", level="event")
+METRIC = MetricSpec(name="mean_loss", column="loss", estimator="mean", level="event_id")
+INFERENCE = InferenceSpec()
 
 
 def panel_of(records: pd.DataFrame) -> pd.DataFrame:
-    return aggregate_to_level(records, "loss", "event", AggregationSpec())
+    return aggregate_to_level(records, "loss", "event_id", AggregationSpec(), INFERENCE)
 
 
 def test_clustered_values_take_preserves_whole_clusters():
@@ -48,9 +50,10 @@ def test_paired_panel_uses_only_shared_clusters(records):
     worlds = sorted(records["world_id"].unique())
     dropped = set(worlds[:5])
     partial = records[~((records["policy_id"] == "policy_b") & records["world_id"].isin(dropped))]
-    panel = build_paired_panel(panel_of(partial), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(partial), METRIC, ["policy_a", "policy_b"], INFERENCE)
     assert panel.n_clusters == len(worlds) - 5
     assert set(panel.dropped_clusters["policy_b"]) == dropped
+    assert "observed under every compared policy" in panel.estimand_conditioning
     assert panel.paired
     assert any("not evaluated under every" in n for n in panel.notes)
 
@@ -59,7 +62,8 @@ def test_unpaired_panel_is_loudly_flagged(records):
     worlds = sorted(records["world_id"].unique())
     partial = records[~((records["policy_id"] == "policy_b") & records["world_id"].isin(worlds[:5]))]
     panel = build_paired_panel(
-        panel_of(partial), METRIC, ["policy_a", "policy_b"], require_common_clusters=False
+        panel_of(partial), METRIC, ["policy_a", "policy_b"], INFERENCE,
+        require_common_clusters=False,
     )
     assert not panel.paired
     assert any("UNPAIRED" in n for n in panel.notes)
@@ -77,11 +81,11 @@ def test_paired_panel_needs_a_shared_cluster(records):
         ignore_index=True,
     )
     with pytest.raises(ValueError, match="nothing to pair"):
-        build_paired_panel(panel_of(disjoint), METRIC, ["policy_a", "policy_b"])
+        build_paired_panel(panel_of(disjoint), METRIC, ["policy_a", "policy_b"], INFERENCE)
 
 
 def test_bootstrap_is_reproducible_from_the_seed(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     first = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b", n_resamples=300, seed=5)
     second = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b", n_resamples=300, seed=5)
     assert first[2].ci == second[2].ci
@@ -90,7 +94,7 @@ def test_bootstrap_is_reproducible_from_the_seed(records):
 
 
 def test_paired_difference_equals_the_arm_difference(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     base, cand, diff = paired_cluster_bootstrap(
         panel, np.mean, "policy_a", "policy_b", n_resamples=300, seed=3
     )
@@ -99,7 +103,7 @@ def test_paired_difference_equals_the_arm_difference(records):
 
 def test_paired_interval_is_narrower_than_the_marginal_ones(records):
     """Pairing removes the shared world effect; that is the whole point of it."""
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     base, cand, diff = paired_cluster_bootstrap(
         panel, np.mean, "policy_a", "policy_b", n_resamples=600, seed=3
     )
@@ -108,9 +112,9 @@ def test_paired_interval_is_narrower_than_the_marginal_ones(records):
     assert paired_width < marginal_width
 
 
-def test_resident_resampling_is_narrower_than_world_resampling(records):
+def test_observation_resampling_is_narrower_than_unit_resampling(records):
     """The pseudoreplication error, measured on one dataset."""
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     _, _, diff = paired_cluster_bootstrap(
         panel, np.mean, "policy_a", "policy_b", n_resamples=600, seed=3
     )
@@ -121,7 +125,7 @@ def test_resident_resampling_is_narrower_than_world_resampling(records):
     assert any("must not be reported" in n for n in naive.notes)
 
 
-def test_cluster_bootstrap_refuses_a_single_cluster():
+def test_cluster_bootstrap_refuses_a_single_unit():
     cv = ClusteredValues.from_groups([np.array([1.0, 2.0, 3.0])])
     with pytest.raises(ValueError, match="at least 2"):
         cluster_bootstrap(cv, np.mean, n_resamples=200)
@@ -135,7 +139,7 @@ def test_bca_falls_back_rather_than_producing_nonsense():
 
 
 def test_bca_and_percentile_agree_roughly_on_a_symmetric_statistic(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     pct = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
                                    n_resamples=600, seed=3, method="percentile")[2]
     bca = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
@@ -146,7 +150,7 @@ def test_bca_and_percentile_agree_roughly_on_a_symmetric_statistic(records):
 
 
 def test_basic_interval_is_the_reflected_percentile_interval(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     basic = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
                                      n_resamples=400, seed=3, method="basic")[2]
     pct = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
@@ -156,14 +160,14 @@ def test_basic_interval_is_the_reflected_percentile_interval(records):
 
 
 def test_unknown_bootstrap_method_raises(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     with pytest.raises(ValueError, match="unknown bootstrap method"):
         paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
                                  n_resamples=200, method="magic")
 
 
 def test_design_effect_detects_clustering(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     deff = design_effect(panel, "policy_a")
     assert deff["available"]
     assert deff["design_effect"] >= 1.0
@@ -176,21 +180,63 @@ def test_imbalance_report_flags_lopsided_clusters(records):
     mask = (thin["world_id"] == first_world) & (thin["policy_id"] == "policy_b")
     keep = thin.index[mask][:2]
     thin = thin.drop(index=[i for i in thin.index[mask] if i not in set(keep)])
-    panel = build_paired_panel(panel_of(thin), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(thin), METRIC, ["policy_a", "policy_b"], INFERENCE)
     report = imbalance_report(panel, max_imbalance=0.2)
     assert report["checked"]
     assert report["n_flagged_clusters"] >= 1
 
 
 def test_per_cluster_statistics_shape(records):
-    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"])
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
     table = per_cluster_statistics(panel, np.mean)
     assert len(table) == panel.n_clusters
-    assert {"policy_a", "policy_b", "world"} <= set(table.columns)
+    assert {"policy_a", "policy_b", "world_id"} <= set(table.columns)
 
 
 def test_single_policy_values_are_marginal(records):
-    values, clusters = single_policy_values(panel_of(records), "policy_a")
+    values, clusters = single_policy_values(panel_of(records), "policy_a", INFERENCE)
     assert values.n_clusters == len(clusters) == records["world_id"].nunique()
     with pytest.raises(ValueError, match="no usable values"):
-        single_policy_values(panel_of(records), "policy_zzz")
+        single_policy_values(panel_of(records), "policy_zzz", INFERENCE)
+
+
+def test_unpaired_resample_is_wider_and_labelled(records):
+    """comparison.paired: false must actually unpair the resample."""
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE)
+    paired = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                      n_resamples=600, seed=3, paired=True)[2]
+    unpaired = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                        n_resamples=600, seed=3, paired=False)[2]
+    assert (unpaired.ci_high - unpaired.ci_low) > (paired.ci_high - paired.ci_low)
+    assert any("UNPAIRED RESAMPLE" in n for n in unpaired.notes)
+    assert not any("UNPAIRED RESAMPLE" in n for n in paired.notes)
+
+
+def test_hierarchical_bootstrap_requires_a_level_below_the_unit(records):
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE,
+                               substructure=False)
+    with pytest.raises(ValueError, match="no level below the resampling unit"):
+        paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                 n_resamples=300, hierarchical=True)
+
+
+def test_hierarchical_bootstrap_estimates_a_different_quantity(records):
+    panel = build_paired_panel(panel_of(records), METRIC, ["policy_a", "policy_b"], INFERENCE,
+                               substructure=True)
+    one_stage = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                         n_resamples=600, seed=3)[2]
+    two_stage = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                         n_resamples=600, seed=3, hierarchical=True)[2]
+    assert two_stage.hierarchical and not one_stage.hierarchical
+    assert (two_stage.ci_high - two_stage.ci_low) > (one_stage.ci_high - one_stage.ci_low)
+    assert any("Two-stage bootstrap" in n for n in two_stage.notes)
+
+
+def test_small_unit_counts_are_flagged_as_not_credible(records):
+    worlds = sorted(records["world_id"].unique())[:8]
+    small = records[records["world_id"].isin(worlds)]
+    panel = build_paired_panel(panel_of(small), METRIC, ["policy_a", "policy_b"], INFERENCE)
+    result = paired_cluster_bootstrap(panel, np.mean, "policy_a", "policy_b",
+                                      n_resamples=400, seed=1, estimator_name="cvar")[2]
+    assert not result.credibility["credible"]
+    assert any("NOT CREDIBLE" in n for n in result.notes)

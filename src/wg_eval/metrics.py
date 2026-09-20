@@ -85,6 +85,19 @@ def register_estimator(
     return decorator
 
 
+def tail_count(alpha: float, n: int) -> int:
+    """How many observations the CVaR at ``alpha`` averages over ``n`` values.
+
+    Defined as ``k = max(1, ceil((1 - alpha) * n))``.  The product is rounded to
+    nine decimal places before the ceiling because binary floating point cannot
+    represent most decimal alphas: ``(1 - 0.7) * 10`` evaluates to
+    3.0000000000000004, whose ceiling is 4, so an unrounded implementation
+    silently averages one value more than its own definition states for many
+    ordinary (alpha, n) pairs.
+    """
+    return max(1, math.ceil(round((1.0 - alpha) * n, 9)))
+
+
 def _clean(values: np.ndarray) -> np.ndarray:
     """Finite values only.  Non-finite input is excluded, never imputed here."""
     arr = np.asarray(values, dtype="float64").ravel()
@@ -186,7 +199,8 @@ def _quantile(q: float = 0.9) -> Estimator:
     "cvar",
     "CVaR at alpha={alpha} in the {tail} tail of {level}-level values of "
     "`{column}`: the unweighted mean of the k = max(1, ceil((1-alpha)*n)) most "
-    "extreme values, ties included by position in the sorted order",
+    "extreme values, with (1-alpha)*n rounded to 9 decimals before the ceiling, "
+    "and ties included by position in the sorted order",
     is_tail=True,
     min_values=2,
     min_units=20,
@@ -206,7 +220,7 @@ def _cvar(alpha: float = 0.9, tail: str = "upper") -> Estimator:
         arr = _clean(values)
         if arr.size == 0:
             return math.nan
-        k = max(1, math.ceil((1.0 - alpha) * arr.size))
+        k = tail_count(alpha, arr.size)
         ordered = np.sort(arr)
         worst = ordered[-k:] if tail == "upper" else ordered[:k]
         return float(worst.mean())

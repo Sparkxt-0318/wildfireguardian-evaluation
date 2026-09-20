@@ -18,55 +18,60 @@ import pandas as pd
 
 from wg_eval.dataio import write_records
 from wg_eval.synth.generators import (
+    DEFAULT_STRATA as STRATA,
     PolicyBehaviour,
     WorldModel,
     drop_records,
     generate_experiment,
-    hardest_worlds,
+    hardest_units,
+    mark_status,
 )
 
 HERE = Path(__file__).resolve().parent
 SEED = 20260919
 
-STRATA = {
-    "landscape": ["flat", "steep"],
-    "mobility": ["high", "low"],
-    "fire_regime": ["surface", "crown"],
-    "resource_level": ["scarce", "ample"],
-}
-
 ANALYSIS_YAML = """\
 # Fixture analysis config. See docs/STATISTICAL_PROTOCOL.md for what each
-# choice commits you to.
+# choice commits you to, and docs/ESTIMANDS.md for what it makes the numbers mean.
 label: fixture analysis
-unit_of_inference: world
+analysis_status: exploratory
+
+inference:
+  primary_unit: world_id
+  nested_units: [event_id, resident_id]
 
 metrics:
   - name: mean_loss
     column: loss
     estimator: mean
-    level: event
+    level: event_id
     direction: lower_is_better
+    role: primary
+    bounds: {lower: 0.0}
   - name: cvar90_loss
     column: loss
     estimator: cvar
-    level: event
-    params: {alpha: 0.9, tail: upper}
+    level: event_id
+    tail: harmful
+    params: {alpha: 0.9}
     direction: lower_is_better
+    role: secondary
   - name: success_rate
     column: mission_success
     estimator: mean
-    level: resident
+    level: resident_id
     direction: higher_is_better
+    role: secondary
+    bounds: {lower: 0.0, upper: 1.0}
 
 aggregation:
-  resident_to_event:
+  resident_id->event_id:
     loss: mean
     mission_success: mean
     travel_time: mean
     resource_use: sum
     responder_exposure: sum
-  event_to_world:
+  event_id->world_id:
     loss: mean
     mission_success: mean
   default_rule: mean
@@ -75,27 +80,48 @@ comparison:
   baseline: policy_a
   candidates: [policy_b]
   paired: true
-  require_common_worlds: true
+  require_common_units: true
 
 bootstrap:
   n_resamples: 1000
-  cluster_level: world
   seed: 20260919
   confidence_level: 0.95
   method: percentile
+  hierarchical: false
 
 equivalence:
   alpha: 0.05
   margins:
-    mean_loss: 0.40
+    mean_loss:
+      lower: 0.40
+      upper: 0.40
+      scale: absolute
+      source: "fixture margin, fixed in generate_fixtures.py before any data existed"
   non_inferiority: [mean_loss]
 
-strata: [landscape, mobility, fire_regime, resource_level]
+multiplicity:
+  secondary_correction: holm
+  exploratory_correction: none
+
+strata: [difficulty, scale, regime, capacity]
+
+filters:
+  include: {}
+  exclude: {}
+  exclusions: {}
 
 missing_data:
   policy: drop_record
-  require_complete_worlds: true
+  require_complete_units: true
   max_count_imbalance: 0.2
+  status_column: run_status
+  status_handling:
+    completed: completed
+    crashed: failure
+    timeout: failure
+    infeasible: excluded_documented
+    not_evaluated: missing
+  assumed_mechanism: unknown
 
 failure_column: failure_reason
 """
@@ -109,8 +135,8 @@ def paired_balanced() -> pd.DataFrame:
             PolicyBehaviour("policy_b", loss_shift=0.60, interaction_sd=0.8),
         ],
         WorldModel(
-            n_worlds=24, events_per_world=3, residents_per_event=10,
-            world_sd=3.5, strata=STRATA,
+            n_units=24, events_per_unit=3, observations_per_event=10,
+            unit_sd=3.5, strata=STRATA,
         ),
         seed=SEED,
     )
@@ -124,20 +150,35 @@ def missing_worlds() -> tuple[pd.DataFrame, list[str]]:
             PolicyBehaviour("policy_b", loss_shift=1.20, interaction_sd=0.5),
         ],
         WorldModel(
-            n_worlds=24, events_per_world=2, residents_per_event=10,
-            world_sd=5.0, strata=STRATA,
+            n_units=24, events_per_unit=2, observations_per_event=10,
+            unit_sd=5.0, strata=STRATA,
         ),
         seed=SEED + 1,
     )
-    dropped = hardest_worlds(full[full["policy_id"] == "policy_a"], 8)
-    return drop_records(full, policy="policy_b", worlds=dropped), dropped
+    dropped = hardest_units(full[full["policy_id"] == "policy_a"], 8)
+    return drop_records(full, policy="policy_b", units=dropped), dropped
+
+
+def failed_runs() -> tuple[pd.DataFrame, list[str]]:
+    """policy_b's runs crash on the 6 hardest units, recorded rather than absent."""
+    full = generate_experiment(
+        [
+            PolicyBehaviour("policy_a", interaction_sd=0.4),
+            PolicyBehaviour("policy_b", loss_shift=0.8, interaction_sd=0.4),
+        ],
+        WorldModel(n_units=20, events_per_unit=2, observations_per_event=8,
+                   unit_sd=4.0, strata=STRATA),
+        seed=SEED + 3,
+    )
+    crashed = hardest_units(full[full["policy_id"] == "policy_b"], 6)
+    return mark_status(full, policy="policy_b", units=crashed, status="crashed"), crashed
 
 
 def invalid_records() -> pd.DataFrame:
     """Records that must fail validation: duplicate keys and broken nesting."""
     base = generate_experiment(
         [PolicyBehaviour("policy_a"), PolicyBehaviour("policy_b", loss_shift=0.3)],
-        WorldModel(n_worlds=6, events_per_world=2, residents_per_event=3),
+        WorldModel(n_units=6, events_per_unit=2, observations_per_event=3),
         seed=SEED + 2,
     )
     broken = pd.concat([base, base.iloc[:2]], ignore_index=True)       # duplicate keys
@@ -183,6 +224,20 @@ def main() -> None:
             "duplicate_records", "broken_nesting", "non_binary_outcome",
         ],
         "description": "must fail validation",
+    }
+
+    frame, crashed = failed_runs()
+    source = write_records(frame, HERE / "failed_runs.parquet")
+    manifest["failed_runs.parquet"] = {
+        "checksum": source.checksum,
+        "n_rows": source.n_rows,
+        "truth": {
+            "true_mean_loss_difference": 0.80,
+            "n_units": 20,
+            "crashed_units": crashed,
+            "mechanism": "MNAR",
+        },
+        "description": "policy_b crashes on the hardest units; rows present with null outcomes",
     }
 
     (HERE / "analysis.yaml").write_text(ANALYSIS_YAML, encoding="utf-8")

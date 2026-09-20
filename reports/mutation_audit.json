@@ -1,0 +1,95 @@
+{
+  "n_mutants": 11,
+  "n_detected": 11,
+  "undetected": [],
+  "results": [
+    {
+      "key": "observation_bootstrap",
+      "description": "resample observations instead of whole units",
+      "wrong_behaviour": "confidence intervals several times too narrow",
+      "audit_item": "4, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "unpaired_analysis_of_paired_data",
+      "description": "draw each arm independently while the design is paired",
+      "wrong_behaviour": "the unit effect stops cancelling and a real effect is lost in noise",
+      "audit_item": "2, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "equivalence_without_a_margin",
+      "description": "invent a margin when the config declared none",
+      "wrong_behaviour": "an equivalence verdict nobody declared the basis for",
+      "audit_item": "11, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "p_value_read_as_equivalence",
+      "description": "relabel an inconclusive result as equivalent",
+      "wrong_behaviour": "'no significant difference' presented as a finding of sameness",
+      "audit_item": "12, 30",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "reversed_metric_orientation",
+      "description": "treat lower-is-better metrics as higher-is-better",
+      "wrong_behaviour": "tail statistics summarise the beneficial tail and verdicts invert",
+      "audit_item": "8, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "cvar_wrong_tail",
+      "description": "CVaR averages the opposite tail from the one requested",
+      "wrong_behaviour": "a risk statistic that describes the good case",
+      "audit_item": "9, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "failed_runs_dropped_silently",
+      "description": "discard runs that did not complete, with no ledger",
+      "wrong_behaviour": "a policy improves its score by failing to produce results",
+      "audit_item": "14, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "uneven_unit_reuse_unreported",
+      "description": "stop reporting unequal observation counts between arms",
+      "wrong_behaviour": "a paired difference estimated with wildly unequal precision looks clean",
+      "audit_item": "16, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "multiplicity_family_ignored",
+      "description": "leave every p-value in a declared family uncorrected",
+      "wrong_behaviour": "a family of twenty null tests produces a headline",
+      "audit_item": "19, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "strata_incorrectly_merged",
+      "description": "collapse every unit into a single stratum",
+      "wrong_behaviour": "heterogeneity and allocation imbalance become invisible",
+      "audit_item": "18, 27",
+      "detected": true,
+      "detail": ""
+    },
+    {
+      "key": "inference_structure_unchecked",
+      "description": "accept a declared structure the records contradict",
+      "wrong_behaviour": "resampling at a level where independence does not hold",
+      "audit_item": "3, 27",
+      "detected": true,
+      "detail": ""
+    }
+  ]
+}

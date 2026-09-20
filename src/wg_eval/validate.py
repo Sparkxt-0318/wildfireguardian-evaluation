@@ -381,9 +381,12 @@ def validate_records(
             )
 
     # --- strata -------------------------------------------------------------
-    declared_strata = list(
-        dict.fromkeys(list(strata) + (["stratum"] if "stratum" in frame.columns else []))
-    )
+    # The generic `stratum` column is a convenience label. It is checked only
+    # when nothing else was declared: adding it alongside explicit strata would
+    # flag it as redundant with them, which is true and useless.
+    declared_strata = list(dict.fromkeys(strata))
+    if not declared_strata and "stratum" in frame.columns:
+        declared_strata = ["stratum"]
     primary = inference.primary_unit
     usable_strata: list[str] = []
     for col in declared_strata:

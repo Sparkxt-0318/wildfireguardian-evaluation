@@ -45,7 +45,7 @@ def test_fixtures_are_reproducible_from_the_generator(manifest, tmp_path, monkey
 def test_paired_balanced_fixture_validates_and_recovers_its_truth(manifest):
     frame, source = load_records(FIXTURES / "paired_balanced.parquet")
     config = load_config(FIXTURES / "analysis.yaml")
-    report = validate_records(frame, strata=config.strata)
+    report = validate_records(frame, strata=config.strata, inference=config.inference)
     assert report.ok and not report.warnings
 
     truth = manifest["fixtures"]["paired_balanced.parquet"]["truth"]
@@ -55,10 +55,25 @@ def test_paired_balanced_fixture_validates_and_recovers_its_truth(manifest):
     assert c.difference.ci_low <= truth["true_mean_loss_difference"] <= c.difference.ci_high
 
 
+def test_failed_runs_fixture_keeps_crashed_runs_visible(manifest):
+    frame, source = load_records(FIXTURES / "failed_runs.parquet")
+    config = load_config(FIXTURES / "analysis.yaml")
+    report = validate_records(frame, strata=config.strata, inference=config.inference)
+    assert report.ok
+    assert "incomplete_runs" in {i.code for i in report.warnings}
+
+    result = compare_policies(frame, config, source=source, metrics=["mean_loss"])
+    ledger = result.run_status["ledger"]
+    assert ledger["available"]
+    assert ledger["n_not_completed"] > 0
+    crashed = [r for r in ledger["counts"] if r["status"] == "crashed"]
+    assert crashed and crashed[0]["handling"] == "failure"
+
+
 def test_missing_worlds_fixture_warns_and_reverses_under_pairing(manifest):
     frame, source = load_records(FIXTURES / "missing_worlds.csv")
     config = load_config(FIXTURES / "analysis.yaml")
-    report = validate_records(frame, strata=config.strata)
+    report = validate_records(frame, strata=config.strata, inference=config.inference)
     assert report.ok
     assert "unbalanced_policy_coverage" in {i.code for i in report.warnings}
 
@@ -67,7 +82,7 @@ def test_missing_worlds_fixture_warns_and_reverses_under_pairing(manifest):
 
     paired = compare_policies(frame, config, source=source, metrics=["mean_loss"])
     unpaired_config = load_config(FIXTURES / "analysis.yaml")
-    object.__setattr__(unpaired_config.comparison, "require_common_worlds", False)
+    object.__setattr__(unpaired_config.comparison, "require_common_units", False)
     unpaired = compare_policies(frame, unpaired_config, source=source, metrics=["mean_loss"])
 
     p = paired.get("mean_loss", "policy_b")
@@ -89,6 +104,8 @@ def test_invalid_fixture_fails_validation_with_the_expected_codes(manifest):
 def test_cli_runs_against_the_committed_fixtures(tmp_path):
     assert main(["validate-results", str(FIXTURES / "paired_balanced.parquet"),
                  "--config", str(FIXTURES / "analysis.yaml")]) == 0
+    assert main(["ledger", str(FIXTURES / "failed_runs.parquet"),
+                 str(FIXTURES / "analysis.yaml")]) == 0
     assert main(["validate-results", str(FIXTURES / "invalid_records.csv")]) == 1
     assert main(["report", str(FIXTURES / "paired_balanced.parquet"),
                  str(FIXTURES / "analysis.yaml"), "--out", str(tmp_path)]) == 0

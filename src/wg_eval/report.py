@@ -131,7 +131,7 @@ def render_markdown(
         f"`{unit}`s, seed `{cfg.bootstrap.seed}`, method `{cfg.bootstrap.method}`"
         + (", two-stage" if cfg.bootstrap.hierarchical else "")
         + f", {cfg.bootstrap.confidence_level:.0%} intervals",
-        f"- **Pairing**: "
+        "- **Pairing**: "
         + (
             "paired on shared units"
             if cfg.comparison.require_common_units

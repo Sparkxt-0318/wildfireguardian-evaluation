@@ -148,7 +148,9 @@ multiplicity:
   secondary_correction: holm
   exploratory_correction: none
 
-strata: [landscape, mobility, fire_regime, resource_level]
+# Declared unit-level design variables. These names are examples; any
+# unit-level column may be declared, and outcomes may not.
+strata: [difficulty, scale, regime, capacity]
 
 filters:
   include: {}

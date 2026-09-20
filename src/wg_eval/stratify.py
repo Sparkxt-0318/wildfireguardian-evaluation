@@ -15,7 +15,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-import numpy as np
 import pandas as pd
 
 from wg_eval.compare import ComparisonResult, compare_policies
@@ -352,9 +351,11 @@ def stratum_redundancy(
             left, right = maps[a].align(maps[b], join="inner")
             if left.empty:
                 continue
-            a_in_b = int(left.groupby(right, observed=True).nunique().max() or 0) <= 1
-            b_in_a = int(right.groupby(left, observed=True).nunique().max() or 0) <= 1
-            if a_in_b and b_in_a:
+            # Grouping a's values BY b: if every b-level carries one a-value,
+            # then b refines a, i.e. b is nested inside a.
+            b_refines_a = int(left.groupby(right, observed=True).nunique().max() or 0) <= 1
+            a_refines_b = int(right.groupby(left, observed=True).nunique().max() or 0) <= 1
+            if b_refines_a and a_refines_b:
                 findings.append(
                     {
                         "code": "identical_strata",
@@ -366,8 +367,8 @@ def stratum_redundancy(
                         "detail": {"columns": [a, b]},
                     }
                 )
-            elif a_in_b or b_in_a:
-                coarse, fine = (b, a) if a_in_b else (a, b)
+            elif b_refines_a or a_refines_b:
+                coarse, fine = (a, b) if b_refines_a else (b, a)
                 findings.append(
                     {
                         "code": "nested_strata",

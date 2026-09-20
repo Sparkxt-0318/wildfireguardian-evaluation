@@ -139,8 +139,11 @@ class Provenance:
             {
                 "source_checksum": self.source.get("checksum"),
                 "source_rows": self.source.get("n_rows"),
+                # NOT the raw config checksum: that hashes the whole file,
+                # including its label and prose, so a retitled analysis would
+                # look like a different one. The stripped resolved config below
+                # carries every choice that moves a number.
                 "config": self.config.get("resolved", self.config),
-                "config_checksum": self.config.get("checksum"),
                 "inference": self.inference,
                 "estimand": self.estimand,
                 "filters": self.filters,

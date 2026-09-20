@@ -25,7 +25,6 @@ from wg_eval.bootstrap import naive_iid_bootstrap
 from wg_eval.compare import ComparisonResult, compare_policies
 from wg_eval.config import AnalysisConfig, config_from_mapping
 from wg_eval.coverage import CoverageEstimate, compare_coverage, estimate_coverage
-from wg_eval.hierarchy import InferenceSpec
 from wg_eval.pairing import ClusteredValues
 from wg_eval.synth.generators import (
     DEFAULT_STRATA,
@@ -1516,8 +1515,7 @@ def _demo_bounded(scenario: Scenario, seed: int) -> ScenarioRun:
     )
     b_cmp = basic.get("success_rate", "policy_b")
     p_cmp = percentile.get("success_rate", "policy_b")
-    b_arm = basic.get("success_rate", "policy_b").candidate_result
-    p_arm = percentile.get("success_rate", "policy_b").candidate_result
+    b_arm, p_arm = b_cmp.candidate_result, p_cmp.candidate_result
 
     run = ScenarioRun(scenario=scenario, records=frame, truth=truth, comparison=percentile)
     run.naive = {
