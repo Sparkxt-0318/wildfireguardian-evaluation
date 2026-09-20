@@ -27,8 +27,14 @@ clusters per replicate and evaluates *both* arms on it, so the pairing survives
 into the interval and not just the point estimate.
 
 **Test.** `test_paired_interval_is_narrower_than_the_marginal_ones`;
-scenarios `missing_worlds_reverse_ranking` and `easier_worlds_confound`, where
-the unpaired ranking is the reverse of the true one.
+`test_unpaired_resample_is_wider_and_labelled`; scenarios
+`missing_units_reverse_ranking`, `easier_units_confound` and
+`paired_data_analysed_unpaired`.
+
+**What pairing costs.** Restricting to shared units changes the estimand to one
+conditioned on being observed under every policy. That is reported wherever the
+finding is, and the excluded units are compared against the shared ones to see
+whether the conditioning matters here. See [`ESTIMANDS.md`](ESTIMANDS.md).
 
 ---
 
@@ -40,15 +46,16 @@ be compared to see what differs.
 **Why.** A number that cannot be reproduced cannot be checked, and a number
 that cannot be checked cannot be argued with.
 
-**Implementation.** Every result carries a `Provenance` block: source file
-checksum, config checksum, filters, exclusions, aggregation rules, metric
-definition, bootstrap seed, confidence level, code version and environment
-versions. `Provenance.fingerprint()` hashes all of it except the wall-clock
-time, so two analyses that should agree can be compared by one string.
+**Implementation.** Every result carries a `Provenance` block and a
+reproducibility manifest with five separately-moving hashes. Two fingerprints
+are computed: `scientific_fingerprint` covers everything that could change a
+number, and `fingerprint` covers presentation as well, so a regenerated report
+and a re-analysis are distinguishable.
 
-**Test.** `test_provenance_records_everything_a_rerun_would_need`,
-`test_provenance_fingerprint_ignores_time_but_not_content`,
-`test_comparison_is_deterministic_for_a_fixed_seed`.
+**Test.** `tests/test_reproducibility.py` audits both directions: thirteen
+parametrized cases assert that each scientific input moves the fingerprint, and
+further cases assert that row order, policy order, file location and
+presentation do not.
 
 ---
 
@@ -84,18 +91,20 @@ decisive — than correct ones.
 
 **Implementation.** Three layers:
 
-1. `bootstrap.cluster_level: resident` raises `ConfigError` at load time. The
-   error names the error and points at the red-team demonstration.
+1. `inference.primary_unit: resident_id` raises `ConfigError` at load time, and
+   a declared structure the records contradict raises `InferenceStructureError`.
 2. Every bootstrap resamples whole clusters; all observations inside a drawn
    cluster travel with it.
 3. Every validation report carries a `nesting_ratio` note stating how large the
    overstatement would be, and every analysis report prints the design effect
    and the effective sample size.
 
-**Test.** `test_config_rejects_resident_level_resampling`;
-`test_resident_bootstrap_is_measurably_over_confident`, which measures coverage
-of the wrong interval (~62%) against the right one (~90% at 20 worlds, ~98% at
-60).
+**Test.** `test_config_rejects_observation_level_resampling`;
+`test_observation_bootstrap_is_measurably_over_confident`, which measures the
+wrong interval's coverage with its Monte Carlo interval and asserts the gap from
+the right one exceeds Monte Carlo error. Also
+`tests/test_hierarchy.py`, which refuses declarations the records contradict,
+and the `observation_bootstrap` mutation test.
 
 ---
 
@@ -115,9 +124,10 @@ by everyone downstream as "they are the same". Those are opposite claims.
 sentence says "This is 'undetermined', NOT 'no difference'" in the report text.
 Equivalence requires a margin: `tost` raises `MarginRequired` without one.
 
-**Test.** `test_no_verdict_ever_claims_no_difference`,
+**Test.** `test_no_verdict_makes_a_forbidden_claim` (which runs the wording
+audit over every verdict),
 `test_wide_interval_around_zero_is_inconclusive_never_equivalent`, and the
-`practical_equivalence` scenario.
+`practical_equivalence` and `asymmetric_margin` scenarios.
 
 ---
 
@@ -125,19 +135,20 @@ Equivalence requires a margin: `tost` raises `MarginRequired` without one.
 
 | Requirement | Mechanism | Refuses |
 |---|---|---|
-| Paired | Common-cluster panel, shared resample | Silent unpaired comparison |
-| Reproducible | Provenance + fingerprint on every result | Unseeded resampling |
-| Event-level | Declared two-step roll-up, levelled metrics | Implicit pooling |
-| Anti-pseudoreplication | Cluster bootstrap; resident level rejected at load | Observation-level resampling |
-| Superiority + equivalence | Five-label verdict; TOST with a required margin | "No significant difference" |
+| Paired | Shared-unit panel, shared resample, conditioning reported | Silent unpaired comparison |
+| Reproducible | Two fingerprints, five hashes, seed audit | Unseeded resampling |
+| Event-level | Declared step-by-step roll-up, levelled metrics | Implicit pooling |
+| Anti-pseudoreplication | Declared unit, checked against the records | Observation-level resampling; unchecked declarations |
+| Superiority + equivalence | Five-label verdict; TOST with a required, possibly asymmetric margin | "No significant difference"; equivalence read as interchangeability |
 
 ## What would falsify the answer
 
 - A cluster bootstrap whose measured coverage is not approximately nominal at
-  realistic cluster counts. Measured in `coverage_study`.
+  realistic unit counts. Measured in `coverage_study`, and reported with a
+  Monte Carlo interval so the claim is falsifiable rather than decorative.
 - A red-team scenario that the protocol does not defend against. Each new
   scenario is a falsification attempt; `test_scenario_traps_fire_and_defences_hold`
   fails loudly when a defence stops working.
-- A real design where the world is not the right unit of inference — for
-  example, policies allocated *within* events rather than across worlds. That
-  design is out of scope today; see [`ASSUMPTIONS.md`](ASSUMPTIONS.md) A3.
+- A real design the declared-hierarchy machinery cannot express. Crossed random
+  effects are the known case: `crossed_levels` is an error rather than a
+  supported design.
