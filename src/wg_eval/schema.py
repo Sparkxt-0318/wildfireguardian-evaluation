@@ -1,12 +1,15 @@
 """The generic experiment-record schema.
 
-The schema is deliberately domain-free.  It describes a three-level nesting::
+The schema is deliberately domain-free.  It names the columns a record table
+may carry and what each one means structurally.  It does **not** fix the
+nesting order: which identifier is the independent unit is declared in the
+analysis configuration (``inference.primary_unit``) and checked against the
+records by :mod:`wg_eval.hierarchy`.  The common case is::
 
     world  ->  event  ->  observation (resident)
 
-and a treatment label (``policy_id``) applied at the world/event level.  Any
-producer of experiment records that can express its results in these terms can
-be evaluated by this library; nothing here knows what the records mean.
+but a design where one event spans many worlds declares the reverse, and the
+library verifies the declaration rather than assuming either.
 """
 
 from __future__ import annotations
@@ -16,8 +19,12 @@ from typing import Literal
 
 Kind = Literal["id", "categorical", "boolean", "numeric"]
 
-#: Nesting levels, coarsest first.  ``analysis`` levels are derived.
+#: Short level names for the default hierarchy, coarsest first.
 LEVELS: tuple[str, ...] = ("world", "event", "resident")
+
+#: The default hierarchy as column names, coarsest first. Configurations may
+#: declare a different one; this is only the starting assumption.
+DEFAULT_LEVEL_ORDER: tuple[str, ...] = ("world_id", "event_id", "resident_id")
 
 
 @dataclass(frozen=True)
@@ -43,7 +50,7 @@ SCHEMA: tuple[ColumnSpec, ...] = (
         "id",
         required=True,
         nullable=False,
-        description="Independent replicate. The default unit of inference.",
+        description="Experimental unit. The default -- but declared -- unit of inference.",
         constant_at="world",
     ),
     ColumnSpec(
@@ -51,7 +58,7 @@ SCHEMA: tuple[ColumnSpec, ...] = (
         "id",
         required=True,
         nullable=False,
-        description="An event nested within exactly one world.",
+        description="A grouping between the world and the observation, in either direction.",
         constant_at="event",
     ),
     ColumnSpec(
@@ -110,8 +117,16 @@ SCHEMA: tuple[ColumnSpec, ...] = (
     ColumnSpec(
         "stratum",
         "categorical",
-        description="Default declared stratum label for the world.",
+        description="Default declared stratum label for the unit.",
         constant_at="world",
+    ),
+    ColumnSpec(
+        "run_status",
+        "categorical",
+        description=(
+            "How the run that produced this row ended: completed, crashed, timeout, "
+            "infeasible, not_evaluated, excluded. A failed run is not an absent row."
+        ),
     ),
 )
 
@@ -135,22 +150,31 @@ REQUIRED_COLUMNS: tuple[str, ...] = tuple(c.name for c in SCHEMA if c.required)
 NON_STRATUM_COLUMNS: frozenset[str] = frozenset(ID_COLUMNS) | frozenset(OUTCOME_COLUMNS) | {
     "failure_reason",
     "action",
+    "run_status",
 }
 
+#: Column names that look like sampling weights. They are reported and ignored;
+#: see docs/ESTIMANDS.md "Weighted units" for why they are not applied.
+WEIGHT_LIKE_COLUMNS: frozenset[str] = frozenset(
+    {"weight", "weights", "unit_weight", "sample_weight", "sampling_weight"}
+)
 
-def level_keys(level: str) -> tuple[str, ...]:
-    """Return the grouping key for a nesting level, excluding ``policy_id``.
+
+def level_keys(level: str, hierarchy: tuple[str, ...] | None = None) -> tuple[str, ...]:
+    """Composite key for a nesting level, under ``hierarchy`` (default order).
+
+    Prefer :meth:`wg_eval.hierarchy.InferenceSpec.keys_for`, which uses the
+    hierarchy the configuration actually declared. This helper exists for code
+    that only has the default order to work with.
 
     >>> level_keys("event")
     ('world_id', 'event_id')
     """
-    if level == "world":
-        return ("world_id",)
-    if level == "event":
-        return ("world_id", "event_id")
-    if level == "resident":
-        return ("world_id", "event_id", "resident_id")
-    raise ValueError(f"unknown level {level!r}; expected one of {LEVELS}")
+    order = hierarchy or DEFAULT_LEVEL_ORDER
+    name = {"world": "world_id", "event": "event_id", "resident": "resident_id"}.get(level, level)
+    if name not in order:
+        raise ValueError(f"unknown level {level!r}; expected one of {order}")
+    return tuple(order[: order.index(name) + 1])
 
 
 def describe_schema() -> str:

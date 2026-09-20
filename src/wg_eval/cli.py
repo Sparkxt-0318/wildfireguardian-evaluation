@@ -19,7 +19,12 @@ from typing import Any, Sequence
 
 import pandas as pd
 
-from wg_eval.aggregate import apply_filters, apply_missing_policy, panel as build_panel
+from wg_eval.aggregate import (
+    apply_filters,
+    apply_missing_policy,
+    apply_run_status,
+    panel as build_panel,
+)
 from wg_eval.bootstrap import cluster_bootstrap
 from wg_eval.compare import compare_policies
 from wg_eval.config import ConfigError, load_config
@@ -27,15 +32,17 @@ from wg_eval.dataio import load_records, write_records
 from wg_eval.metrics import build_estimator, describe_registry
 from wg_eval.pairing import single_policy_values
 from wg_eval.report import (
+    audit_wording,
     json_default,
     render_markdown,
     render_text,
+    reproducibility_manifest,
     result_to_json,
     write_report,
 )
 from wg_eval.schema import describe_schema
-from wg_eval.stratify import compare_by_stratum
-from wg_eval.validate import validate_records
+from wg_eval.stratify import allocation_ledger, compare_by_stratum
+from wg_eval.validate import validate_for_config, validate_records
 from wg_eval.version import __version__, code_version
 
 EXIT_OK = 0
@@ -48,42 +55,62 @@ DEFAULT_CONFIG = """\
 # the provenance of every number produced from it.
 label: example analysis
 
-# Residents are nested observations, not replicates. The unit of inference is
-# the world; `resident` is rejected by the loader.
-unit_of_inference: world
+# Preregistration is never inferred from the existence of this file.
+# Set `preregistered` only with a protocol hash/commit that someone else can check.
+analysis_status: exploratory
+# protocol:
+#   hash: sha256:...
+#   commit: abc1234
+#   timestamp: 2026-09-01T00:00:00Z
+
+# The independent unit is DECLARED and then checked against the records.
+# Observations are nested, never replicates. `resident_id` is refused here.
+inference:
+  primary_unit: world_id
+  nested_units: [event_id, resident_id]
 
 metrics:
+  # Exactly one metric may be primary. It is reported first.
   - name: mean_loss
     column: loss
     estimator: mean
-    level: event
+    level: event_id
     direction: lower_is_better
+    role: primary
+    bounds: {lower: 0.0}
   - name: cvar90_loss
     column: loss
     estimator: cvar
-    level: event
-    params: {alpha: 0.9, tail: upper}
+    level: event_id
+    # `tail: harmful` resolves against `direction`, so the harmful tail is
+    # never chosen by accident. Set `upper`/`lower` to override deliberately.
+    tail: harmful
+    params: {alpha: 0.9}
     direction: lower_is_better
+    role: secondary
   - name: p90_loss
     column: loss
     estimator: quantile
-    level: event
+    level: event_id
     params: {q: 0.9}
     direction: lower_is_better
+    role: exploratory
   - name: success_rate
     column: mission_success
     estimator: mean
-    level: resident
+    level: resident_id
     direction: higher_is_better
+    role: secondary
+    bounds: {lower: 0.0, upper: 1.0}
 
 aggregation:
-  resident_to_event:
+  resident_id->event_id:
     loss: mean
     mission_success: mean
     travel_time: mean
     resource_use: sum
     responder_exposure: sum
-  event_to_world:
+  event_id->world_id:
     loss: mean
     mission_success: mean
   default_rule: mean
@@ -92,22 +119,34 @@ comparison:
   baseline: policy_a
   candidates: [policy_b]
   paired: true
-  require_common_worlds: true
+  require_common_units: true
 
 bootstrap:
   n_resamples: 2000
-  cluster_level: world
   seed: 20260919
   confidence_level: 0.95
+  # percentile | basic | bca. They are not interchangeable; see
+  # docs/STATISTICAL_PROTOCOL.md section 5.
   method: percentile
+  # Two-stage resampling estimates a different quantity. Off unless justified.
+  hierarchical: false
 
 equivalence:
   alpha: 0.05
-  # A margin is the largest difference that would still be practically the same.
-  # Without one, equivalence cannot be concluded -- only 'undetermined'.
+  # A margin is the largest difference that would still be negligible.
+  # It may be asymmetric, and it must record where it came from.
   margins:
-    mean_loss: 0.40
+    mean_loss:
+      lower: 0.40
+      upper: 0.40
+      scale: absolute
+      source: "declared before analysis; replace with your own justification"
   non_inferiority: [mean_loss]
+
+multiplicity:
+  # Families are the declared analysis roles. Primary is never corrected.
+  secondary_correction: holm
+  exploratory_correction: none
 
 strata: [landscape, mobility, fire_regime, resource_level]
 
@@ -118,8 +157,17 @@ filters:
 
 missing_data:
   policy: drop_record
-  require_complete_worlds: true
+  require_complete_units: true
   max_count_imbalance: 0.2
+  status_column: run_status
+  status_handling:
+    completed: completed
+    crashed: failure
+    timeout: failure
+    infeasible: excluded_documented
+    not_evaluated: missing
+  assumed_mechanism: unknown
+  mechanism_justification: ""
 
 failure_column: failure_reason
 """
@@ -142,12 +190,15 @@ def _emit_json(payload: Any) -> None:
 def cmd_validate(args: argparse.Namespace) -> int:
     frame, source = load_records(args.results)
     strata: list[str] = list(args.stratum or [])
-    unit = "world"
+    cfg = None
     if args.config:
         cfg = load_config(args.config)
         strata = list(dict.fromkeys(strata + list(cfg.strata)))
-        unit = cfg.unit_of_inference
-    report = validate_records(frame, strata=strata, unit_of_inference=unit)
+    report = (
+        validate_for_config(frame, cfg)
+        if cfg is not None
+        else validate_records(frame, strata=strata)
+    )
     if args.json:
         _emit_json({"source": source.as_dict(), **report.as_dict()})
     else:
@@ -198,7 +249,9 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     frame, source, cfg = _load(args.results, args.config)
     if cfg is None:  # pragma: no cover
         raise ConfigError("bootstrap requires a config file")
-    filtered, prep = apply_filters(frame, cfg.filters)
+    filtered, prep = apply_filters(frame, cfg.filters, unit=cfg.inference.primary_unit)
+    filtered, status_info = apply_run_status(filtered, cfg.missing_data)
+    prep.run_status = {"applied": status_info}
     policies = sorted(str(p) for p in filtered["policy_id"].dropna().unique())
     selected = [m for m in cfg.metrics if not args.metric or m.name in args.metric]
     if not selected:
@@ -209,12 +262,10 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         cleaned, _ = apply_missing_policy(
             filtered, metric.column, cfg.missing_data, direction=metric.direction
         )
-        panel_frame = build_panel(cleaned, metric, cfg.aggregation)
-        estimator = build_estimator(metric.estimator, metric.params)
+        panel_frame = build_panel(cleaned, metric, cfg.aggregation, cfg.inference)
+        estimator = build_estimator(metric.estimator, metric.resolved_params())
         for policy in policies:
-            values, _clusters = single_policy_values(
-                panel_frame, policy, cluster_level=cfg.cluster_level
-            )
+            values, _clusters = single_policy_values(panel_frame, policy, cfg.inference)
             res = cluster_bootstrap(
                 values,
                 estimator,
@@ -222,19 +273,23 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
                 seed=cfg.bootstrap.seed,
                 confidence_level=cfg.bootstrap.confidence_level,
                 method=cfg.bootstrap.method,
-                cluster_level=cfg.cluster_level,
+                cluster_level=cfg.inference.primary_unit,
+                estimator_name=metric.estimator,
+                bounds=metric.bounds,
             )
             rows.append(
                 {
                     "metric": metric.name,
+                    "role": metric.role,
                     "level": metric.level,
                     "policy": policy,
                     "estimate": res.estimate,
                     "ci_low": res.ci_low,
                     "ci_high": res.ci_high,
                     "se": res.standard_error,
-                    "n_clusters": res.n_clusters,
+                    "n_units": res.n_clusters,
                     "n_observations": int(len(values.all_values())),
+                    "credible": res.credibility.get("credible", True),
                 }
             )
     table = pd.DataFrame(rows)
@@ -251,7 +306,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     else:
         print(
             f"bootstrap: {cfg.bootstrap.n_resamples} resamples of whole "
-            f"{cfg.cluster_level}s, seed {cfg.bootstrap.seed}, "
+            f"{cfg.inference.primary_unit}s, seed {cfg.bootstrap.seed}, "
             f"{cfg.bootstrap.confidence_level:.0%} {cfg.bootstrap.method} intervals"
         )
         print(f"source checksum: {source.checksum}\n")
@@ -282,9 +337,49 @@ def cmd_report(args: argparse.Namespace) -> int:
         stratified=stratified or None,
         basename=args.basename,
     )
-    print(f"wrote {paths.markdown}")
-    print(f"wrote {paths.json}")
-    print(f"wrote {paths.summary_csv}")
+    for path in (paths.markdown, paths.json, paths.summary_csv, paths.manifest):
+        if path is not None:
+            print(f"wrote {path}")
+
+    manifest = reproducibility_manifest(result)["manifest"]
+    print("\nreproducibility manifest:")
+    for key, value in manifest.items():
+        if key != "environment":
+            print(f"  {key}: {value}")
+
+    # Generated prose must not make claims the library is not entitled to make.
+    findings = audit_wording(paths.markdown.read_text(encoding="utf-8")) if paths.markdown else []
+    if findings:
+        print("\nWORDING AUDIT FAILED -- the generated report makes unsupported claims:",
+              file=sys.stderr)
+        for finding in findings[:10]:
+            print(f"  {finding['phrase']!r}: {finding['guidance']}", file=sys.stderr)
+            print(f"    ...{finding['context']}...", file=sys.stderr)
+        return EXIT_FAILED
+    return EXIT_OK
+
+
+def cmd_ledger(args: argparse.Namespace) -> int:
+    """What each policy was actually given, before any comparison."""
+    frame, source, cfg = _load(args.results, args.config)
+    if cfg is None:  # pragma: no cover
+        raise ConfigError("ledger requires a config file")
+    ledger = allocation_ledger(frame, cfg, columns=cfg.strata)
+    if args.json:
+        _emit_json({"source": source.as_dict(), "ledger": ledger})
+        return EXIT_OK
+    print(f"unit of inference: {ledger['unit']}   hierarchy: {' > '.join(ledger['hierarchy'])}")
+    print(f"units observed: {ledger['n_units_total']}   shared by every policy: "
+          f"{ledger['n_units_shared']}\n")
+    print(pd.DataFrame(ledger["per_policy"]).to_string(index=False))
+    if ledger["run_status_counts"]:
+        print("\nrun status:")
+        print(pd.DataFrame(ledger["run_status_counts"]).fillna(0).astype(int).to_string())
+    for column, block in ledger["strata"].items():
+        print(f"\nstratum `{column}` composition shift (all units -> shared units):")
+        for level, shift in block["composition_shift"].items():
+            print(f"  {level}: {shift:+.1%}")
+    print(f"\n{ledger['note']}")
     return EXIT_OK
 
 
@@ -431,6 +526,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-validate", action="store_true")
     p.add_argument("--title", default="Evaluation report")
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("ledger", help="print the allocation and run-status ledger")
+    p.add_argument("results")
+    p.add_argument("config")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_ledger)
 
     p = sub.add_parser("schema", help="print the generic record schema")
     p.set_defaults(func=cmd_schema)
