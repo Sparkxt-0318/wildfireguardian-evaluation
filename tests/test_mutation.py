@@ -47,6 +47,16 @@ def test_the_mutant_is_detected(key: str):
     )
 
 
+def test_the_mutant_catalogue_makes_no_forbidden_claim():
+    """Describing an error must not reproduce the phrasing that causes it."""
+    from wg_eval.report import audit_wording
+
+    for mutant in MUTANTS:
+        text = f"{mutant.description}\n{mutant.wrong_behaviour}"
+        findings = audit_wording(text)
+        assert findings == [], f"{mutant.key}: {[f['phrase'] for f in findings]}"
+
+
 @pytest.mark.slow
 def test_the_audit_summary_reports_no_holes():
     report = summary(run_mutation_audit())

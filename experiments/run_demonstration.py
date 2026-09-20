@@ -4,13 +4,16 @@
 Generates synthetic experiment records and produces one report that shows, on
 data whose truth is known by construction:
 
-1. the pseudoreplication error -- a resident-level bootstrap manufacturing
+1. the pseudoreplication error -- an observation-level bootstrap manufacturing
    precision the design does not have;
-2. the correct paired, world-level analysis recovering the truth, with its
-   coverage measured rather than asserted;
+2. the correct paired, unit-level analysis, with its coverage measured and its
+   Monte Carlo uncertainty reported rather than asserted;
 3. equivalence testing against a declared practical margin, in place of
-   "p > 0.05, therefore no difference";
-4. tail-risk disagreement -- mean and CVaR resolving in opposite directions.
+   reading a large p-value as a finding of sameness;
+4. tail-risk disagreement -- mean and CVaR resolving in opposite directions;
+5. dependence above the declared unit -- where a cluster bootstrap at the wrong
+   level is still wrong;
+6. a failed run counted as a missing value, and the finding that reverses.
 
     python experiments/run_demonstration.py --out experiments/output
 
@@ -31,10 +34,12 @@ from wg_eval.synth.redteam import SCENARIOS, run_scenario
 from wg_eval.version import code_version
 
 DEMONSTRATIONS = [
-    ("resident_bootstrap_false_precision", "1. The pseudoreplication error"),
-    ("world_bootstrap_correct", "2. The correct paired, world-level analysis"),
+    ("observation_bootstrap_false_precision", "1. The pseudoreplication error"),
+    ("unit_bootstrap_calibration", "2. The correct paired, unit-level analysis"),
     ("practical_equivalence", "3. Equivalence testing against a declared margin"),
     ("tail_risk_disagreement", "4. Tail-risk disagreement"),
+    ("dependence_above_declared_unit", "5. Dependence above the declared unit"),
+    ("failed_runs_as_missing", "6. A failed run is not a missing value"),
 ]
 
 PREAMBLE = """\
@@ -45,34 +50,42 @@ number below can be checked against a truth the analysis cannot see.
 It is a demonstration of *analysis failure modes*, not of any system's
 performance. No real experiment output is involved.
 
-Read it as four paired examples. In each, the left-hand analysis is one a
-competent person could plausibly run, and the right-hand analysis is the one
-this library performs by default.
+Read it as a series of paired examples. In each, the left-hand analysis is one
+a competent person could plausibly run, and the right-hand analysis is the one
+this library performs by default. Every coverage figure carries the number of
+replications it came from and a Monte Carlo interval, because a coverage
+percentage from a simulation is itself an estimate.
 """
 
 CLOSING = """\
-## What the four demonstrations establish
+## What these demonstrations establish
 
 | # | Failure mode | What produces it | What prevents it |
 |---|--------------|------------------|------------------|
-| 1 | False precision | Resampling nested observations as if they were independent experiments | Resample whole worlds; observations travel with their world |
-| 2 | Unverified calibration | Trusting one interval because it looks reasonable | Measure coverage over repeated replications of the whole experiment |
-| 3 | "No significant difference" read as "the same" | A large p-value and no declared margin | TOST against an explicit practical margin, or say "undetermined" |
+| 1 | False precision | Resampling nested observations as if they were independent experiments | Resample whole units; observations travel with their unit |
+| 2 | Unverified calibration | Trusting a coverage percentage without its Monte Carlo interval | Report replications, MC standard error and a Wilson interval |
+| 3 | A large p-value read as a finding of sameness | No declared margin, so the interval cannot be interpreted | TOST against an explicit margin, or say "undetermined" |
 | 4 | A confident recommendation from one statistic | Reporting the mean of a heavy-tailed outcome | Declare tail metrics in advance and report the disagreement |
+| 5 | A cluster bootstrap at the wrong level | Assuming the unit rather than declaring and checking it | Verify the declared structure against the records |
+| 6 | A policy scored only where it succeeded | Treating a failed run as a missing value | Declare the run-status handling; keep failures in the ledger |
 
-Two further failure modes are exercised by the full red-team suite in
-`redteam.md`: a ranking reversed by missing worlds, and a policy that wins only
-because it was allocated easier worlds.
+Four further failure modes are exercised by the full red-team suite in
+`redteam.md`: a ranking reversed by missing units, a policy allocated easier
+units, an uncorrected family of null metrics, and a headline metric chosen after
+the results were seen.
 
 ## The rules these demonstrations encode
 
-1. The unit of inference is the world. Residents are nested observations, and
-   no number of them buys precision that generalises to new fires.
-2. Policies evaluated on the same world are compared within that world. Anything
-   else confounds the policy with the material it was given.
+1. The unit of inference is **declared, and then checked against the records**.
+   Identifiers that differ are not evidence of independence.
+2. Policies evaluated on the same unit are compared within that unit — and the
+   restriction to shared units is a change of estimand that gets reported.
 3. An interval that includes zero means **undetermined**. Only a test against a
-   declared practical margin can support equivalence.
-4. Where metrics disagree, the disagreement is the finding.
+   declared margin can support equivalence, and statistical equivalence is not
+   operational interchangeability.
+4. Where metrics disagree, the disagreement is the finding. This library names
+   no winner across metrics.
+5. Every claim about calibration carries its Monte Carlo uncertainty.
 """
 
 
@@ -160,7 +173,7 @@ def main() -> int:
         stratified=stratified, basename="report",
     )
     lines += [
-        "## 5. A routine report, end to end",
+        f"## {len(DEMONSTRATIONS) + 1}. A routine report, end to end",
         "",
         "`report.md` in this directory is the ordinary output of",
         "",

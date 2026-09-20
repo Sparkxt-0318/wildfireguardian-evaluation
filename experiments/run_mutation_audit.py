@@ -14,7 +14,7 @@ from wg_eval.mutation import run_mutation_audit, summary
 from wg_eval.version import code_version
 
 PREAMBLE = """\
-A test suite that passes proves nothing until you know it can fail. This audit
+A test suite that passes tells you nothing until you know it can fail. This audit
 introduces deliberate statistical errors -- the exact errors the library exists
 to prevent -- and records whether anything catches each one.
 

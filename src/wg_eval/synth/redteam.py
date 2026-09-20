@@ -1031,10 +1031,12 @@ def _demo_shared_event_shock(scenario: Scenario, seed: int) -> ScenarioRun:
             "unit_level": unit_study["cluster_level"].as_dict(),
             "event_level": event_study["cluster_level"].as_dict(),
             "detail": (
-                f"Resampling the 48 units gives {unit_study['cluster_level'].describe()}; "
-                f"resampling the 8 shared events gives {event_study['cluster_level'].describe()}. "
-                "Cluster resampling is only correct at the level where independence actually "
-                "holds, and 'cluster bootstrap' is not a synonym for 'correct'."
+                f"Resampling the {truth['n_units']} units gives "
+                f"{unit_study['cluster_level'].describe()}; resampling the "
+                f"{truth['n_independent_events']} shared events gives "
+                f"{event_study['cluster_level'].describe()}. Cluster resampling is only correct "
+                "at the level where independence actually holds, and 'cluster bootstrap' is not "
+                "a synonym for 'correct'."
             ),
         },
         {
@@ -2052,8 +2054,8 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             key="unit_bootstrap_calibration",
             title="Unit-level bootstrap coverage, with its Monte Carlo error",
-            trap="A single interval proves nothing, and a bare coverage percentage from 100 "
-                 "replications is read as if it were exact.",
+            trap="One interval establishes nothing on its own, and a bare coverage "
+                 "percentage from 100 replications is read as if it were exact.",
             truth="The true mean loss difference is +0.6 in every replication.",
             defence="Report empirical coverage with its Monte Carlo SE and a Wilson interval, "
                     "and compare coverage at two unit counts.",
@@ -2134,10 +2136,10 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             key="dependence_above_declared_unit",
             title="Units that share a higher-level shock",
-            trap="48 units look like 48 replicates, so a unit-level cluster bootstrap looks "
+            trap="80 units look like 80 replicates, so a unit-level cluster bootstrap looks "
                  "correct and is not.",
-            truth="The units come in 8 groups of 6 that share one event-level shock, so there "
-                  "are 8 independent replicates.",
+            truth="The units come in 20 groups of 4 sharing an event-level shock that acts "
+                  "differently on the two policies, so there are 20 independent replicates.",
             defence="Declare the inference structure and check it against the records; an "
                     "event that contains units is refused as a nested level.",
             can_conclude="That resampling at the wrong level under-covers even though it is a "

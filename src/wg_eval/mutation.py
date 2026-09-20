@@ -465,7 +465,8 @@ def _detect_accept_any_inference_structure() -> bool:
 MUTANTS: list[Mutant] = [
     Mutant("observation_bootstrap",
            "resample observations instead of whole units",
-           "confidence intervals several times too narrow",
+           "intervals narrower than the design earns, by up to sqrt(sub-units per "
+           "unit) when units differ in how they respond to the policies",
            _observation_bootstrap, _detect_observation_bootstrap, "4, 27"),
     Mutant("unpaired_analysis_of_paired_data",
            "draw each arm independently while the design is paired",
@@ -477,7 +478,7 @@ MUTANTS: list[Mutant] = [
            _equivalence_without_margin, _detect_equivalence_without_margin, "11, 27"),
     Mutant("p_value_read_as_equivalence",
            "relabel an inconclusive result as equivalent",
-           "'no significant difference' presented as a finding of sameness",
+           "an unresolved contrast presented as a finding of sameness",
            _p_value_means_equivalence, _detect_p_value_means_equivalence, "12, 30"),
     Mutant("reversed_metric_orientation",
            "treat lower-is-better metrics as higher-is-better",

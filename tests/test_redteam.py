@@ -171,3 +171,27 @@ def test_unit_difficulty_length_is_checked():
             WorldModel(n_units=3, events_per_unit=1, observations_per_event=1),
             unit_difficulty=[0.0, 1.0],
         )
+
+
+def test_scenario_narrative_makes_no_forbidden_claim():
+    """Describing an error must not require reproducing the phrasing that causes it."""
+    from wg_eval.report import audit_wording
+
+    for scenario in list_scenarios():
+        text = "\n".join(
+            [scenario.title, scenario.trap, scenario.truth, scenario.defence,
+             scenario.can_conclude, scenario.cannot_conclude]
+        )
+        findings = audit_wording(text)
+        assert findings == [], f"{scenario.key}: {[f['phrase'] for f in findings]}"
+
+
+@pytest.mark.slow
+def test_scenario_reports_make_no_forbidden_claim():
+    for key in ("tail_risk_disagreement", "practical_equivalence", "wrong_cvar_tail",
+                "failed_runs_as_missing", "bounded_outcome_interval"):
+        from wg_eval.report import audit_wording
+
+        run = run_scenario(key, seed=20260919)
+        findings = audit_wording(run.to_text())
+        assert findings == [], f"{key}: {[f['phrase'] for f in findings]}"

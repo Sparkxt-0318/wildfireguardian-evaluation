@@ -6,7 +6,7 @@
     {
       "key": "observation_bootstrap",
       "description": "resample observations instead of whole units",
-      "wrong_behaviour": "confidence intervals several times too narrow",
+      "wrong_behaviour": "intervals narrower than the design earns, by up to sqrt(sub-units per unit) when units differ in how they respond to the policies",
       "audit_item": "4, 27",
       "detected": true,
       "detail": ""
@@ -30,7 +30,7 @@
     {
       "key": "p_value_read_as_equivalence",
       "description": "relabel an inconclusive result as equivalent",
-      "wrong_behaviour": "'no significant difference' presented as a finding of sameness",
+      "wrong_behaviour": "an unresolved contrast presented as a finding of sameness",
       "audit_item": "12, 30",
       "detected": true,
       "detail": ""
