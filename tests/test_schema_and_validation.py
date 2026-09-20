@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from wg_eval.schema import describe_schema, level_keys
-from wg_eval.validate import MIN_CLUSTERS_FOR_BOOTSTRAP, validate_records
+from wg_eval.validate import MIN_UNITS_FOR_BOOTSTRAP, validate_records
 
 
 def codes(report) -> set[str]:
@@ -15,11 +15,11 @@ def codes(report) -> set[str]:
 
 
 def test_clean_records_pass(records):
-    report = validate_records(records, strata=["landscape", "mobility"])
+    report = validate_records(records, strata=["difficulty", "scale"])
     assert report.ok
     assert not report.errors
     assert report.summary["n_policies"] == 2
-    assert report.summary["n_common_worlds"] == report.summary["n_worlds"]
+    assert report.summary["n_common_units"] == report.summary["n_units"]
 
 
 def test_missing_required_columns_is_an_error(records):
@@ -41,7 +41,8 @@ def test_duplicate_observation_keys_are_an_error(records):
     assert "duplicate_records" in codes(report)
 
 
-def test_event_shared_across_worlds_breaks_nesting(records):
+def test_event_shared_across_units_breaks_the_declared_nesting(records):
+    """An event under two units contradicts `event_id` being the nested level."""
     broken = records.copy()
     first_event = broken.loc[0, "event_id"]
     other_world = broken.loc[broken["world_id"] != broken.loc[0, "world_id"], "world_id"].iloc[0]
@@ -49,7 +50,7 @@ def test_event_shared_across_worlds_breaks_nesting(records):
     broken.loc[idx, "event_id"] = first_event
     report = validate_records(broken)
     assert not report.ok
-    assert "broken_nesting" in codes(report)
+    assert {"broken_nesting", "crossed_levels", "inverted_nesting"} & codes(report)
 
 
 def test_non_binary_outcome_is_an_error(records):
@@ -76,20 +77,20 @@ def test_negative_loss_is_a_warning_not_an_error(records):
     assert "implausible_value" in codes(report)
 
 
-def test_single_cluster_is_refused(records):
+def test_single_unit_is_refused(records):
     one = records[records["world_id"] == records["world_id"].iloc[0]]
     report = validate_records(one)
     assert not report.ok
-    assert "single_cluster" in codes(report)
+    assert "single_primary_unit" in codes(report)
 
 
-def test_few_clusters_warns_with_the_count(records):
-    worlds = sorted(records["world_id"].unique())[: MIN_CLUSTERS_FOR_BOOTSTRAP - 5]
+def test_few_units_warns_with_the_count(records):
+    worlds = sorted(records["world_id"].unique())[: MIN_UNITS_FOR_BOOTSTRAP - 5]
     small = records[records["world_id"].isin(worlds)]
     report = validate_records(small)
     assert report.ok
-    issue = next(i for i in report.issues if i.code == "few_clusters")
-    assert issue.detail["n_clusters"] == len(worlds)
+    issue = next(i for i in report.issues if i.code == "few_units")
+    assert issue.detail["n_units"] == len(worlds)
 
 
 def test_unbalanced_policy_coverage_warns_and_counts_common_worlds(records):
@@ -99,7 +100,7 @@ def test_unbalanced_policy_coverage_warns_and_counts_common_worlds(records):
     report = validate_records(partial)
     assert report.ok
     issue = next(i for i in report.issues if i.code == "unbalanced_policy_coverage")
-    assert issue.detail["n_common_worlds"] == len(worlds) - len(dropped)
+    assert issue.detail["n_common_units"] == len(worlds) - len(dropped)
 
 
 def test_no_common_worlds_is_an_error(records):
@@ -114,15 +115,15 @@ def test_no_common_worlds_is_an_error(records):
     )
     report = validate_records(disjoint)
     assert not report.ok
-    assert "no_common_worlds" in codes(report)
+    assert "no_common_units" in codes(report)
 
 
-def test_stratum_varying_within_world_warns(records):
+def test_stratum_varying_within_unit_warns(records):
     bad = records.copy()
-    bad.loc[0, "landscape"] = "moon"
-    report = validate_records(bad, strata=["landscape"])
+    bad.loc[0, "difficulty"] = "other"
+    report = validate_records(bad, strata=["difficulty"])
     assert report.ok
-    assert "stratum_varies_within_world" in codes(report)
+    assert "stratum_varies_within_unit" in codes(report)
 
 
 def test_missing_stratum_column_is_an_error(records):
@@ -134,7 +135,7 @@ def test_missing_stratum_column_is_an_error(records):
 def test_nesting_ratio_is_always_reported(records):
     report = validate_records(records)
     issue = next(i for i in report.issues if i.code == "nesting_ratio")
-    assert issue.detail["observations_per_world"] > 1
+    assert issue.detail["observations_per_unit"] > 1
 
 
 def test_failure_reason_consistency_warnings(records):

@@ -21,11 +21,55 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+      - name: Lint
+        run: |
+          pip install ruff
+          ruff check src tests experiments --select F,E9
       - name: Test
         run: pytest -q
-      - name: Validate the committed fixtures
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Committed fixtures validate cleanly
         run: |
           wg-eval validate-results tests/fixtures/paired_balanced.parquet \
             --config tests/fixtures/analysis.yaml --strict
+          wg-eval ledger tests/fixtures/failed_runs.parquet tests/fixtures/analysis.yaml
+
+      - name: Committed fixtures match their checksum manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from wg_eval.dataio import file_checksum
+
+          manifest = json.loads(Path("tests/fixtures/MANIFEST.json").read_text())
+          failed = False
+          for name, info in manifest["fixtures"].items():
+              actual = file_checksum(Path("tests/fixtures") / name)
+              if actual != info["checksum"]:
+                  failed = True
+                  print(f"MISMATCH {name}: {actual} != {info['checksum']}")
+          raise SystemExit(1 if failed else 0)
+          PY
+
       - name: Red-team scenarios must still trap and still be defended
         run: wg-eval redteam
+
+      - name: Mutation audit must find no holes
+        run: python experiments/run_mutation_audit.py --out /tmp/mutation
+
+      - name: Generated reports must make no forbidden claim
+        run: |
+          wg-eval report tests/fixtures/paired_balanced.parquet \
+            tests/fixtures/analysis.yaml --out /tmp/report

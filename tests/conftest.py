@@ -10,14 +10,12 @@ import pandas as pd
 import pytest
 
 from wg_eval.config import config_from_mapping
-from wg_eval.synth.generators import PolicyBehaviour, WorldModel, generate_experiment
-
-STRATA = {
-    "landscape": ["flat", "steep"],
-    "mobility": ["high", "low"],
-    "fire_regime": ["surface", "crown"],
-    "resource_level": ["scarce", "ample"],
-}
+from wg_eval.synth.generators import (
+    DEFAULT_STRATA as STRATA,
+    PolicyBehaviour,
+    WorldModel,
+    generate_experiment,
+)
 
 
 @pytest.fixture(scope="session")
@@ -29,10 +27,10 @@ def records() -> pd.DataFrame:
             PolicyBehaviour("policy_b", loss_shift=0.8, interaction_sd=0.6),
         ],
         WorldModel(
-            n_worlds=32,
-            events_per_world=3,
-            residents_per_event=12,
-            world_sd=3.0,
+            n_units=32,
+            events_per_unit=3,
+            observations_per_event=12,
+            unit_sd=3.0,
             strata=STRATA,
         ),
         seed=11,
@@ -43,24 +41,27 @@ def records() -> pd.DataFrame:
 def config_mapping() -> dict:
     return {
         "label": "test",
-        "unit_of_inference": "world",
+        "inference": {"primary_unit": "world_id", "nested_units": ["event_id", "resident_id"]},
         "metrics": [
-            {"name": "mean_loss", "column": "loss", "estimator": "mean", "level": "event",
-             "direction": "lower_is_better"},
-            {"name": "cvar90_loss", "column": "loss", "estimator": "cvar", "level": "event",
-             "params": {"alpha": 0.9}, "direction": "lower_is_better"},
+            {"name": "mean_loss", "column": "loss", "estimator": "mean", "level": "event_id",
+             "direction": "lower_is_better", "role": "primary"},
+            {"name": "cvar90_loss", "column": "loss", "estimator": "cvar", "level": "event_id",
+             "params": {"alpha": 0.9}, "direction": "lower_is_better", "role": "secondary"},
             {"name": "success_rate", "column": "mission_success", "estimator": "mean",
-             "level": "resident", "direction": "higher_is_better"},
+             "level": "resident_id", "direction": "higher_is_better", "role": "secondary",
+             "bounds": {"lower": 0.0, "upper": 1.0}},
         ],
         "aggregation": {
-            "resident_to_event": {"loss": "mean", "mission_success": "mean", "resource_use": "sum"},
-            "event_to_world": {"loss": "mean"},
+            "resident_id->event_id": {"loss": "mean", "mission_success": "mean",
+                                      "resource_use": "sum"},
+            "event_id->world_id": {"loss": "mean"},
         },
         "comparison": {"baseline": "policy_a", "candidates": ["policy_b"]},
-        "bootstrap": {"n_resamples": 400, "cluster_level": "world", "seed": 7,
+        "bootstrap": {"n_resamples": 400, "seed": 7,
                       "confidence_level": 0.95, "method": "percentile"},
-        "equivalence": {"margins": {"mean_loss": 2.0}, "alpha": 0.05,
-                        "non_inferiority": ["mean_loss"]},
+        "equivalence": {"margins": {"mean_loss": {"lower": 2.0, "upper": 2.0,
+                                                  "source": "test fixture"}},
+                        "alpha": 0.05, "non_inferiority": ["mean_loss"]},
         "strata": list(STRATA),
         "missing_data": {"policy": "drop_record"},
     }

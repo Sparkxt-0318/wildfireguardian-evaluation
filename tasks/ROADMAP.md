@@ -15,7 +15,7 @@ margin. Inheritance is the legitimate way to standardise margins without
 creating a global default — but only if the inherited margin is still a choice
 somebody made and can be seen in the provenance.
 
-**Blocked on.** Agent A open question 2 in [`CURRENT.md`](CURRENT.md).
+**Blocked on.** Agent A open question 3 in [`CURRENT.md`](CURRENT.md).
 
 **Definition of done.** `extends:` in a config; resolved values visible in
 provenance; a test that an inherited margin is distinguishable from an
@@ -33,7 +33,7 @@ baseline-vs-candidate runs.
 wearing different clothes; doing arms without families would produce more
 comparisons with no accounting.
 
-**Blocked on.** Agent A open questions 3 and 4.
+**Blocked on.** Agent A open questions 2 and 4.
 
 **Definition of done.** `comparison.contrasts`; each contrast paired on its own
 shared cluster set; a red-team scenario where a three-arm winner is an artefact
@@ -71,18 +71,21 @@ the default.
 
 ---
 
-## R5 — Declared families and multiplicity correction
+## R5 — Multiplicity across contrasts, and adjusted intervals
 
-**Adds.** `multiplicity: {family: [...], method: holm}` and a corrected report.
+**Adds.** Families spanning policy contrasts as well as metrics, and confidence
+intervals adjusted for multiplicity.
 
-**Why not yet.** Protocol §9: correcting over the wrong family is worse than
-not correcting, and the library cannot infer the family.
+**Why not yet.** Declared families by analysis role shipped in v0.1.0, with Holm
+and Bonferroni, and the red-team scenario `uncorrected_family` demonstrates the
+error. Two pieces remain. Contrast-level families need the multi-arm design of
+R2. Adjusted intervals are genuinely hard: a Holm-adjusted region is not
+generally an interval, so shipping one would mean choosing a specific
+simultaneous-confidence construction and saying which.
 
-**Blocked on.** Agent A open question 3.
-
-**Definition of done.** Family declared in config; uncorrected and corrected
-results both shown; a red-team scenario where an uncorrected family of twenty
-metrics produces a spurious winner.
+**Definition of done.** A declared family spanning contrasts; a named
+simultaneous-interval construction with its assumptions documented; the
+uncorrected and corrected results both shown.
 
 ---
 
@@ -131,11 +134,61 @@ before any comparison is reported.
 
 ---
 
+## R9 — Studentized bootstrap
+
+**Adds.** A studentized interval, which has the best small-sample coverage of
+the standard constructions.
+
+**Why not yet.** It needs a variance estimate for the statistic within each
+replicate. For a mean that is cheap; for CVaR it means a nested bootstrap, whose
+cost is quadratic in resamples. The method name is currently *rejected* rather
+than silently substituted, which is the honest interim position.
+
+**Definition of done.** Available per metric rather than globally, with the
+nested-resample cost stated; a coverage study comparing it against percentile
+and BCa at 10, 20 and 50 units, each with Monte Carlo intervals.
+
+---
+
+## R10 — Crossed designs
+
+**Adds.** Support for two groupings that neither nest nor contain — the same
+policies evaluated across, say, scenario families and hardware configurations.
+
+**Why not yet.** `crossed_levels` is an error today. A crossed design needs
+either a crossed-effects model or a declared choice of which factor is the
+resampling unit with the other as a stratum, and that choice changes the
+estimand.
+
+**Blocked on.** Agent A open question 1 in [`CURRENT.md`](CURRENT.md).
+
+**Definition of done.** A declared crossed structure; a stated estimand for it;
+a red-team scenario where treating one crossed factor as nested under-covers.
+
+---
+
+## R11 — Weighted estimands with a declared design
+
+**Adds.** Unit weights, once the producer declares a sampling design that makes
+the weighted estimand well defined.
+
+**Why not yet.** [`DECISIONS.md`](../docs/DECISIONS.md) D21: the two things
+called "weight" change different parts of the estimand and cannot be told apart
+from a column of numbers.
+
+**Definition of done.** A `sampling_design` declaration that distinguishes a
+unit-level sampling weight from an intra-unit probability; the weighted estimand
+written out in `ESTIMANDS.md`; a red-team scenario where applying the wrong one
+silently re-weights the population.
+
+---
+
 ## Not planned
 
 | | Why |
 |---|---|
 | Bayesian estimation | A coherent alternative, but mixing frameworks in one report invites choosing between them after the fact |
+| Weighted units without a declared design | A sampling weight and an intra-unit probability cannot be told apart from a column of numbers (D21) |
 | A web UI | The CLI and the Python API are the interface; a UI would need a server and an audience this library does not have |
 | Automatic metric selection | Metric shopping with extra steps ([`FAILURE_MODES.md`](../docs/FAILURE_MODES.md) F7) |
 | Domain knowledge of any kind | [`SCOPE.md`](../docs/SCOPE.md) — this is the property that makes the library trustworthy |

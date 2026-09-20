@@ -1,14 +1,17 @@
 # Failure modes
 
 The errors this library exists to prevent. Each has a red-team scenario, a
-defence, and a measurement showing the defence works.
-
-Run them all:
+defence, and a measurement showing the defence works — or, where the defence is
+partial, an honest statement of what it does not cover.
 
 ```bash
-wg-eval redteam
+wg-eval redteam                      # all sixteen scenarios
+wg-eval redteam --scenario wrong_cvar_tail
 python experiments/run_demonstration.py --out experiments/output
+python experiments/run_mutation_audit.py --out reports
 ```
+
+Quoted numbers are from seed `20260919` and are reproduced by the commands above.
 
 ---
 
@@ -16,42 +19,47 @@ python experiments/run_demonstration.py --out experiments/output
 
 **The error.** Treating nested observations as independent replicates.
 
-**What it looks like.** "We evaluated across 2,400 residents." Narrow
+**What it looks like.** "We evaluated across 2,400 observations." Narrow
 intervals, decisive verdicts, a study that appears far better powered than it is.
 
-**Measured consequence.** On the demonstration design — 20 worlds, 2 events
-each, 30 residents per event — resampling residents gives an interval **3.9×
-too narrow**, and a nominal-95% interval covers the true difference **62% of
-the time**. The world-level interval covers it 90% at 20 worlds and 98% at 60.
+**Measured.** On the demonstration design — 20 units, 2 sub-units each, 30
+observations per sub-unit — resampling observations gives an interval about 4×
+too narrow, and its nominal-95% coverage is measured at roughly 60% with a
+Monte Carlo interval that excludes 95%. The unit-level interval covers
+materially more often, and the gap between the two coverage estimates is larger
+than their combined Monte Carlo error.
 
-**Why it is dangerous.** The wrong answer looks *better*. Nobody scrutinises an
-interval for being too narrow.
+**How large the error can be.** Not unbounded, and the folk version of this rule
+is too strong. With `sigma_I` the unit-by-policy interaction, `V_E` the variance
+of a paired sub-unit difference and `E` sub-units per unit, the variance ratio is
+`(2*sigma_I^2 + V_E) / (2*E*sigma_I^2 + V_E)` — it tends to `1/E` when the
+interaction dominates and to **1** when there is none. On a design where units
+do not differ in how they respond to the policies, the two bootstraps estimate
+the same thing.
 
-**Defence.** `bootstrap.cluster_level: resident` raises at config load. All
-resampling draws whole clusters. Design effect, ICC and effective sample size
-appear in every report; `nesting_ratio` appears in every validation.
+**Defence.** `inference.primary_unit: resident_id` raises at config load. All
+resampling draws whole units. Design effect, ICC and effective sample size in
+every report; `nesting_ratio` in every validation.
 
-**Scenarios.** `resident_bootstrap_false_precision`, `world_bootstrap_correct`.
+**Scenarios.** `observation_bootstrap_false_precision`, `unit_bootstrap_calibration`.
 
 ---
 
-## F2 — Unpaired comparison across different worlds
+## F2 — Unpaired comparison across different unit sets
 
-**The error.** Comparing policies over whichever worlds each happened to run.
+**The error.** Comparing policies over whichever units each happened to run.
 
-**What it looks like.** A confident ranking with no mention of which worlds
-each policy saw.
+**Measured.** Scenario `missing_units_reverse_ranking`: policy_b is truly
+**+1.2 worse** and missing from the 22 hardest of 60 units. Unpaired reports
+**−1.86 favouring policy_b**; paired on the 38 shared units reports **+0.95**,
+recovering the direction.
 
-**Measured consequence.** Scenario `missing_worlds_reverse_ranking`: policy_b is
-truly **+1.2 worse**, but is missing from the 22 hardest of 60 worlds. The
-unpaired comparison reports **−1.86 in policy_b's favour**. The paired
-comparison on the 38 shared worlds reports **+0.95**, recovering the direction.
+**Defence.** Pairing on shared units by default; every excluded unit recorded;
+`require_common_units: false` marks everything downstream `UNPAIRED UNIT SETS`;
+`unbalanced_policy_coverage` at validation.
 
-**Defence.** Pairing on shared clusters by default. Every excluded world
-recorded. `require_common_worlds: false` marks everything downstream `UNPAIRED`.
-`unbalanced_policy_coverage` fires at validation.
-
-**Scenario.** `missing_worlds_reverse_ranking`.
+**What it cannot fix.** The paired estimand is conditioned on being observed
+under every policy. See F11.
 
 ---
 
@@ -59,165 +67,281 @@ recorded. `require_common_worlds: false` marks everything downstream `UNPAIRED`.
 
 **The error.** A policy wins because it was tested on easier material.
 
-**What it looks like.** A large effect, consistent across metrics, that
-evaporates or reverses when you ask which worlds each policy ran.
+**Measured.** Scenario `easier_units_confound`: policy_b is truly **1.5 better**
+but ran mostly on high-difficulty units. Pooled, policy_a appears **+3.2**
+better; paired on the 12 shared units, **−1.69** favouring policy_b, and every
+stratum agrees with the paired result.
 
-**Measured consequence.** Scenario `easier_worlds_confound`: policy_b is truly
-**1.5 better**, but ran mostly on steep worlds while policy_a ran mostly on
-flat ones. Pooled, policy_a appears **+3.2 better**. Paired on the 12 shared
-worlds: **−1.69**, favouring policy_b. Every stratum agrees with the paired
-result.
+**Defence.** Pairing; the allocation ledger; `allocation_balance`; per-stratum
+contrasts; composition shift between all observed units and the shared ones.
 
-**Defence.** Pairing; the allocation ledger (worlds per policy per stratum);
-`allocation_balance`, which flags a share gap above 10%; per-stratum
-comparison; `pooled_contradicts_strata` detection.
-
-**Scenario.** `easier_worlds_confound`.
+**What it does not claim.** The ledger describes the allocation. It does not
+diagnose why the allocation happened, and the library never calls it confounding
+(see F13).
 
 ---
 
 ## F4 — "No significant difference" read as "the same"
 
-**The error.** Reporting a large p-value or a zero-containing interval as
-evidence of equivalence.
+**Measured.** Scenario `practical_equivalence`: a true difference of **+0.03**
+against a declared margin of **±0.40**, correctly concluded equivalent rather
+than merely "not significant".
 
-**What it looks like.** "No significant difference was found (p = 0.41),
-so the simpler policy is preferred."
-
-**Why it is dangerous.** It is a claim the data does not support, phrased so
-that it sounds like one it does. A wide interval around zero is consistent with
-zero *and with every other value it contains*, including differences that
-matter enormously.
-
-**Defence.** No `no_difference` verdict exists. `inconclusive` says "This is
-'undetermined', NOT 'no difference'". `tost` raises `MarginRequired` without a
-margin. Metrics with no margin are annotated. When the interval is much wider
-than the margin, the result says so and says that more *clusters* are needed.
-
-**Scenario.** `practical_equivalence` — a true difference of +0.03 against a
-declared margin of 0.40, correctly concluded equivalent rather than merely
-"not significant".
+**Defence.** No `no_difference` verdict exists; `inconclusive` says
+"undetermined"; `tost` raises `MarginRequired` without a margin; equivalence
+findings carry the interchangeability caveat (F12); `audit_wording` refuses the
+phrase in any generated report.
 
 ---
 
 ## F5 — Mean-only reporting of a heavy-tailed outcome
 
-**The error.** Summarising a skewed loss distribution by its mean.
+**Measured.** Scenario `tail_risk_disagreement`: policy_a's mean loss is
+**0.85 better**, its 90% CVaR **2.7 worse**, both intervals excluding zero.
 
-**What it looks like.** "Policy A reduces mean loss by 0.85. Recommend A."
-
-**Measured consequence.** Scenario `tail_risk_disagreement`: policy_a has a 4%
-per-observation chance of a +60 catastrophe. Its mean loss is **0.85 better**;
-its 90% CVaR is **2.7 worse**. Both intervals exclude zero. A mean-only report
-confidently recommends the policy with the catastrophic tail.
-
-**Defence.** Tail metrics are first-class. `detect_disagreements` compares
-central and tail metrics on the same column and reports a `central_vs_tail`
-conflict, plus a `metric_split` note when declared metrics favour different
-policies. The report prints the disagreement rather than resolving it.
-
-**Scenario.** `tail_risk_disagreement`.
+**Defence.** Tail metrics are first-class; `detect_disagreements` reports the
+conflict with orientation, both contrasts, both intervals and both unit counts,
+and names no winner.
 
 ---
 
 ## F6 — Outcome-dependent missingness
 
-**The error.** Dropping failed, crashed or timed-out runs and analysing what
-remains.
+**Measured.** Scenario `outcome_dependent_missingness`: policy_b is truly
+**+1.0 worse** and its runs crash on the 18 hardest of 50 units. Complete-case
+gives **+0.97 over 32 units**; imputing the worst observed value for the crashed
+runs gives **+4.17**. The bounds are far apart, which is the finding.
 
-**What it looks like.** A clean dataset. That is exactly the problem: the runs
-that would have shown the weakness are the ones that did not finish.
+**Defence.** Failed runs stay in the records with a status; the ledger counts
+them before any handling; the declared mechanism is recorded and printed;
+`impute_worst`/`impute_best` bound the estimate; the overlap check (F11) fires.
 
-**Defence.** Missing clusters are always reported, never silently dropped.
-Missing values are counted per policy in the provenance. `impute_worst` and
-`impute_best` bound the effect, and running both is the protocol's
-recommendation for substantial missingness. Pairing prevents the specific
-failure of comparing over unequal world sets.
-
-**Residual risk.** No method recovers information that was never recorded. If a
-policy crashes on hard worlds, the honest statement is about the worlds it
-completed. [`ASSUMPTIONS.md`](ASSUMPTIONS.md) A4.
-
-**Scenario.** `missing_worlds_reverse_ranking`.
+**Residual risk.** No method recovers outcomes that were never produced.
 
 ---
 
 ## F7 — Metric shopping
 
-**The error.** Running many comparisons and reporting the flattering one.
+**Measured.** Scenario `metric_selected_after_the_fact`: forty pure-noise
+metrics, **13 point at policy_b**, and the most convincing has raw **p = 0.052**
+— while the declared primary metric resolves against policy_b.
 
-**Defence, partial.** The library cannot prevent this — a determined analyst
-can delete metrics from a config. It makes it *visible*: every declared metric
-is reported including unresolved ones; disagreements are flagged; per-stratum
-results are printed together; the provenance records the config that produced
-the numbers, so a later reader can see what was declared.
-
-The protocol requires declaring the primary metric in advance
-([`STATISTICAL_PROTOCOL.md`](STATISTICAL_PROTOCOL.md) §9). That is a process
-control, not a code control, and it is labelled as one.
+**Defence, partial and labelled as such.** Exactly one primary metric, reported
+first; every finding labelled with its role; declared families with corrections;
+`analysis_status` and the protocol hash; the config in the provenance. None of
+these stop a determined analyst. They stop an accidental one and leave a record
+for everyone else.
 
 ---
 
 ## F8 — Irreproducible results
 
-**The error.** A number that cannot be regenerated: unseeded resampling, an
-undocumented filter, a since-modified input file.
-
-**Defence.** Every result carries source checksum, config checksum, filters,
-exclusions, aggregation rules, metric definition, seed, confidence level, code
-version and environment versions. `Provenance.fingerprint()` reduces all of it
-except the timestamp to one string, so two results that should match can be
-compared directly.
+**Defence.** Two fingerprints and five hashes
+([`STATISTICAL_PROTOCOL.md`](STATISTICAL_PROTOCOL.md) §15). Every scientific
+input is tested to move the scientific fingerprint; presentation changes are
+tested not to. Row order, policy order and file location are tested to change
+nothing.
 
 ---
 
 ## F9 — Aggregation that changes the estimand silently
 
-**The error.** Pooling observations across events of very different sizes, so a
-200-resident event counts fifty times a 4-resident one.
-
-**Measured consequence.** On the worked example in
-`test_roll_up_goes_through_the_hierarchy`, the two-step world mean is **12.5**
-and the pooled observation mean is **12.0** on identical data. Neither is
-wrong; they are different quantities, and only one of them is what was meant.
+**Measured.** On the worked example in `tests/test_reference_calculations.py`,
+the two-step unit mean is **12.5** and the pooled observation mean is **12.0** on
+identical data. Neither is wrong; they are different quantities.
 
 **Defence.** Declared per-column rules for each step, applied one level at a
-time. Never an implicit pool. Rules are recorded in provenance.
+time, recorded in provenance and in the scientific fingerprint.
 
 ---
 
 ## F10 — Success rates that hide a worsened failure mode
 
-**The error.** Reporting overall success and stopping.
+**Defence.** Failure composition per policy, plus a paired per-unit shift in each
+mode's **absolute** rate, so a mode cannot appear to worsen merely because the
+total failure count fell ([`DECISIONS.md`](DECISIONS.md) D10).
 
-**What it looks like.** "Success improved from 82% to 84%." Meanwhile the
-`unreachable` failures — the ones with the worst consequences — doubled.
+---
 
-**Defence.** Failure composition per policy, plus a **paired per-world shift**
-in each mode's absolute rate. The summary names the mode that got worse:
+## F11 — Complete-case bias
 
-```
-policy_b raises the per-world rate of 'late_arrival' by +6.94% on average
-relative to policy_a; an improved overall rate can still hide a worsened
-failure mode.
-```
+**The error.** Reporting a paired estimate, correct on the units it used, as
+though it described the target population.
 
-Rates are per observation, not per failure, so a mode cannot appear to worsen
-merely because the total failure count fell ([`DECISIONS.md`](DECISIONS.md) D10).
+**Measured.** In `missing_units_reverse_ranking` the excluded units differ from
+the shared ones by well over the 0.2 standardized-shift threshold, and the
+result says so in words.
+
+**Defence.** `panel.estimand_conditioning` states what the estimand is
+conditioned on, in the panel, the report and the provenance;
+`diagnostics.overlap` compares each arm's values on shared versus excluded units.
+
+**Direction of evidence.** Passing the check is not proof of
+representativeness; failing it is disproof. [`ESTIMANDS.md`](ESTIMANDS.md) says
+why.
+
+---
+
+## F12 — Statistical equivalence read as interchangeability
+
+**The error.** "Equivalent within ±0.4" taken to mean the options can be swapped.
+
+**Defence.** Every equivalence finding carries the caveat; the verdict label is
+`statistically_equivalent`, not `equivalent`; the margin's `source` is recorded
+and its absence flagged.
+
+**What it cannot fix.** Whether the margin marks a decision-relevant difference
+is a domain judgement. The library states the limit rather than closing it.
+
+---
+
+## F13 — Reversals mistaken for diagnosed confounding
+
+**The error.** Reporting "Simpson's paradox detected" or "confounding detected"
+when an aggregate and its strata disagree.
+
+**Why it matters.** A reversal can arise from unequal allocation, from genuine
+heterogeneity, or from noise in thin strata. Naming a cause asserts something
+unchecked and invites the reader to stop looking.
+
+**Defence.** The findings are `direction_differs_between_strata` and
+`aggregate_contradicts_strata`; the prose says the contrasts disagree and points
+at the allocation ledger; a stratum with fewer than `min_units` shared units is
+not given a contrast at all.
+
+---
+
+## F14 — Redundant strata read as independent evidence
+
+**The error.** Two stratification dimensions that partition the units the same
+way, presented as two confirmations.
+
+**Defence.** `stratum_redundancy` reports identical strata, deterministic
+nesting, thin cells, levels evaluated under only one policy, and single-level
+strata. Found first by the red team in v0.1.0-pre, where two declared strata were
+perfectly collinear; the generator now lays strata out as a full factorial
+([`DECISIONS.md`](DECISIONS.md) D12).
+
+---
+
+## F15 — Dependence above the declared unit
+
+**The error.** Units that share a higher-level shock, resampled as if
+independent. A cluster bootstrap at the wrong level looks rigorous and is not.
+
+**Measured.** Scenario `dependence_above_declared_unit`: 80 units in 20 groups
+of 4 sharing a group-by-policy shock. Resampling units covers **78.7%
+[71.4%, 84.5%]**; resampling the 20 shared events covers **93.3%
+[88.2%, 96.3%]**.
+
+**Defence.** The declared structure is checked against the records:
+`inverted_nesting` and `undeclared_coarser_grouping` are hard failures.
+
+**What it cannot fix.** The library sees only groupings that appear in the
+records. A dependence nobody recorded is invisible — [`ASSUMPTIONS.md`](ASSUMPTIONS.md) A1.
+
+---
+
+## F16 — The wrong tail
+
+**The error.** A tail statistic that summarises the beneficial end.
+
+**Measured.** Scenario `wrong_cvar_tail`: on a higher-is-better rate, the upper
+tail gives **−0.043 favouring policy_a** and the harmful lower tail gives
+**+0.536 favouring policy_b** — both with intervals excluding zero.
+
+**Defence.** `tail: harmful` resolves against `direction`; a contradictory
+`params.tail` is rejected at config load; the tail side is printed beside every
+tail finding; suspect orientations raise `metric_orientation` warnings.
+
+---
+
+## F17 — Too few independent units
+
+**Measured.** Scenario `too_few_units` sweeps 5, 10, 20 and 50 units at a fixed
+160 observations each. At 5 units `mean_loss` is credible while `cvar90_loss`
+and `p90_loss` are flagged.
+
+The sweep also shows why width is not a usable proxy for credibility: the tail
+statistics' intervals are **not monotone in n**. At 5 units a 90% CVaR over 20
+sub-unit values averages `k = 2` of them and the bootstrap over 5 clusters is
+degenerate, so its interval is *narrower* at 5 units (2.18) than at 10 (4.58). A
+narrow interval from a degenerate statistic is the worst of both worlds, which
+is precisely what the credibility flag exists to catch.
+
+**Defence.** Per-estimator credibility thresholds — 5 units for a mean, 20 for a
+CVaR or quantile, 30 for an extreme — rather than a universal minimum n, which
+would either pass a meaningless CVaR or block a usable mean.
+
+---
+
+## F18 — Impossible intervals on bounded outcomes
+
+**Measured.** Scenario `bounded_outcome_interval`: a basic bootstrap interval on
+a success rate near 1.0 reaches **1.0025**. The percentile interval on the same
+data stays inside the support.
+
+**Defence.** Declared `bounds`; values outside them are a validation error;
+interval endpoints outside them are reported and **never clamped**, because
+clamping narrows the interval without making the construction appropriate.
+
+---
+
+## F19 — An uncorrected family of tests
+
+**Measured.** Scenario `uncorrected_family`: 20 pure-noise metrics with a true
+difference of exactly zero. Uncorrected, **1 contrast resolves**; Holm over the
+declared family leaves **0**.
+
+**Defence.** Families are the declared analysis roles; the primary family is
+never corrected; p-values are adjusted and intervals are not, and the report
+says so.
+
+**What it cannot fix.** A correction applied after the metric was chosen does
+not repair the choosing (F7).
+
+---
+
+## F20 — A failed run counted as a missing value
+
+**Measured.** Scenario `failed_runs_as_missing`: policy_b raises the success
+rate of the runs that finish while crashing on 22% of them. Dropping the crashes
+gives **+0.064 favouring policy_b**; counting them as failures gives **−0.159
+favouring policy_a**. Same records, opposite findings.
+
+**Defence.** Declared `status_handling`; the run-status ledger before any
+handling; the estimand's conditioning stated per handling.
+
+**Whose choice it is.** Which handling is right is a domain question. The
+library forces it into the open rather than answering it.
 
 ---
 
 ## Coverage summary
 
-| Failure mode | Scenario | Prevention |
-|---|---|---|
-| F1 Pseudoreplication | `resident_bootstrap_false_precision`, `world_bootstrap_correct` | Refused at config load |
-| F2 Unpaired comparison | `missing_worlds_reverse_ranking` | Paired by default; `UNPAIRED` labelling |
-| F3 Confounded allocation | `easier_worlds_confound` | Allocation ledger; per-stratum results |
-| F4 "No difference" | `practical_equivalence` | Verdict vocabulary; margin required |
-| F5 Mean-only reporting | `tail_risk_disagreement` | Tail metrics; disagreement detection |
-| F6 Missingness | `missing_worlds_reverse_ranking` | Reported; imputation bounds |
-| F7 Metric shopping | — | Visibility; process control |
-| F8 Irreproducibility | — | Provenance on every result |
-| F9 Silent aggregation | — | Declared two-step rules |
-| F10 Hidden failure modes | — | Paired per-world failure shifts |
+| # | Failure mode | Scenario | Prevention |
+|---|---|---|---|
+| F1 | Pseudoreplication | `observation_bootstrap_false_precision`, `unit_bootstrap_calibration` | refused at config load |
+| F2 | Unpaired unit sets | `missing_units_reverse_ranking` | paired by default; labelled otherwise |
+| F3 | Confounded allocation | `easier_units_confound` | allocation ledger; per-stratum results |
+| F4 | "No difference" | `practical_equivalence` | verdict vocabulary; margin required |
+| F5 | Mean-only reporting | `tail_risk_disagreement` | tail metrics; disagreement reported |
+| F6 | Outcome-dependent missingness | `outcome_dependent_missingness` | status ledger; imputation bounds |
+| F7 | Metric shopping | `metric_selected_after_the_fact` | roles; report order; protocol hash |
+| F8 | Irreproducibility | — | two fingerprints; five hashes |
+| F9 | Silent aggregation | — | declared steps |
+| F10 | Hidden failure modes | — | paired per-unit failure shifts |
+| F11 | Complete-case bias | `missing_units_reverse_ranking` | estimand conditioning; overlap check |
+| F12 | Equivalence read as interchangeability | `practical_equivalence` | decision caveat on every finding |
+| F13 | Reversal called confounding | `easier_units_confound` | wording; support thresholds |
+| F14 | Redundant strata | — | `stratum_redundancy` |
+| F15 | Dependence above the unit | `dependence_above_declared_unit` | structure checked against records |
+| F16 | Wrong tail | `wrong_cvar_tail` | orientation-derived tails |
+| F17 | Too few units | `too_few_units` | per-estimator credibility |
+| F18 | Impossible intervals | `bounded_outcome_interval` | bounds reported, not clamped |
+| F19 | Uncorrected family | `uncorrected_family` | declared families; Holm |
+| F20 | Failed run as missing value | `failed_runs_as_missing` | status handling; ledger |
+
+Two further scenarios test the library's own machinery rather than a domain
+failure: `asymmetric_margin` (F12/F4) and `paired_data_analysed_unpaired`
+(F2/F8, and the defect that found the unread `comparison.paired` flag).

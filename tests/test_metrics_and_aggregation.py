@@ -22,7 +22,10 @@ from wg_eval.config import (
     MissingDataSpec,
     config_from_mapping,
 )
-from wg_eval.metrics import build_estimator, definition_of, estimate
+from wg_eval.hierarchy import InferenceSpec
+from wg_eval.metrics import build_estimator, credibility, definition_of, estimate
+
+INFERENCE = InferenceSpec()
 
 
 def test_mean_median_and_quantile():
@@ -96,9 +99,9 @@ def test_roll_up_goes_through_the_hierarchy():
         }
     )
     agg = AggregationSpec()
-    event = aggregate_to_level(frame, "loss", "event", agg)
+    event = aggregate_to_level(frame, "loss", "event_id", agg, INFERENCE)
     assert sorted(event["value"].tolist()) == [10.0, 15.0]
-    world = aggregate_to_level(frame, "loss", "world", agg)
+    world = aggregate_to_level(frame, "loss", "world_id", agg, INFERENCE)
     # Two-step: (10 + 15) / 2 = 12.5. A pooled resident mean would be 12.0.
     assert world["value"].iloc[0] == pytest.approx(12.5)
     assert frame["loss"].mean() == pytest.approx(12.0)
@@ -114,24 +117,24 @@ def test_sum_rule_is_honoured_per_column():
             "resource_use": [1.0, 2.0, 3.0, 4.0],
         }
     )
-    agg = AggregationSpec(resident_to_event={"resource_use": "sum"})
-    out = aggregate_to_level(frame, "resource_use", "event", agg)
+    agg = AggregationSpec(by_step={"resident_id->event_id": {"resource_use": "sum"}})
+    out = aggregate_to_level(frame, "resource_use", "event_id", agg, INFERENCE)
     assert out["value"].iloc[0] == 10.0
 
 
 def test_resident_level_panel_keeps_every_row(records):
-    out = aggregate_to_level(records, "loss", "resident", AggregationSpec())
+    out = aggregate_to_level(records, "loss", "resident_id", AggregationSpec(), INFERENCE)
     assert len(out) == len(records)
     assert {"world_id", "event_id", "resident_id", "policy_id", "value"} <= set(out.columns)
 
 
-def test_filters_record_rows_and_worlds_removed(records):
+def test_filters_record_rows_and_units_removed(records):
     worlds = sorted(records["world_id"].unique())[:4]
     spec = FilterSpec(exclude={"world_id": worlds})
     out, log = apply_filters(records, spec)
     assert out["world_id"].nunique() == records["world_id"].nunique() - 4
     entry = log.filters_applied[0]
-    assert entry["worlds_removed"] == 4
+    assert entry["units_removed"] == 4
     assert entry["rows_removed"] == len(records) - len(out)
 
 
@@ -177,17 +180,17 @@ def test_impute_worst_respects_the_metric_direction(records):
 
 
 def test_cluster_labels_and_counts(records):
-    panel = aggregate_to_level(records, "loss", "event", AggregationSpec())
-    labels = cluster_labels(panel, "world")
+    panel = aggregate_to_level(records, "loss", "event_id", AggregationSpec(), INFERENCE)
+    labels = cluster_labels(panel, INFERENCE)
     assert labels.nunique() == records["world_id"].nunique()
     with pytest.raises(KeyError):
-        cluster_labels(panel.drop(columns=["event_id"]), "event")
-    counts = observation_counts(records)
-    assert set(counts.columns) == {"world_id", "policy_id", "n_events", "n_observations"}
+        cluster_labels(panel.drop(columns=["event_id"]), INFERENCE, "event_id")
+    counts = observation_counts(records, INFERENCE)
+    assert {"world_id", "policy_id", "n_event_id", "n_observations"} <= set(counts.columns)
 
 
-def test_config_rejects_resident_level_resampling(config_mapping):
-    bad = {**config_mapping, "bootstrap": {**config_mapping["bootstrap"], "cluster_level": "resident"}}
+def test_config_rejects_observation_level_resampling(config_mapping):
+    bad = {**config_mapping, "inference": {"primary_unit": "resident_id"}}
     with pytest.raises(ConfigError, match="pseudoreplication"):
         config_from_mapping(bad)
 
@@ -210,8 +213,48 @@ def test_config_rejects_non_positive_margin(config_mapping):
         config_from_mapping(bad)
 
 
+def test_config_refuses_unit_weights(config_mapping):
+    """A sampling weight and a within-unit probability are different things."""
+    with pytest.raises(ConfigError, match="not a supported configuration key"):
+        config_from_mapping({**config_mapping, "weights": {"w0000": 2.0}})
+
+
+def test_config_rejects_more_than_one_primary_metric(config_mapping):
+    metrics = [dict(m) for m in config_mapping["metrics"]]
+    metrics[1]["role"] = "primary"
+    with pytest.raises(ConfigError, match="more than one metric is declared primary"):
+        config_from_mapping({**config_mapping, "metrics": metrics})
+
+
+def test_config_rejects_a_tail_that_contradicts_the_orientation(config_mapping):
+    metrics = [dict(m) for m in config_mapping["metrics"]]
+    metrics[1] = {**metrics[1], "tail": "harmful", "params": {"alpha": 0.9, "tail": "lower"}}
+    with pytest.raises(ConfigError, match="contradicts"):
+        config_from_mapping({**config_mapping, "metrics": metrics})
+
+
+def test_cvar_tail_follows_metric_orientation(config_mapping):
+    cfg = config_from_mapping(config_mapping)
+    lower_is_better = cfg.metric("cvar90_loss")
+    assert lower_is_better.harmful_side == "upper"
+    assert lower_is_better.resolved_params()["tail"] == "upper"
+
+    flipped = [dict(m) for m in config_mapping["metrics"]]
+    flipped[1] = {**flipped[1], "direction": "higher_is_better"}
+    cfg2 = config_from_mapping({**config_mapping, "metrics": flipped})
+    assert cfg2.metric("cvar90_loss").harmful_side == "lower"
+    assert cfg2.metric("cvar90_loss").resolved_params()["tail"] == "lower"
+
+
+def test_credibility_is_per_estimator_not_a_global_minimum():
+    assert credibility("mean", n_units=10, n_values=30)["credible"]
+    assert not credibility("cvar", n_units=10, n_values=30)["credible"]
+    assert not credibility("max", n_units=25, n_values=75)["credible"]
+
+
 def test_config_round_trips_through_yaml(config):
     text = config.to_yaml()
-    assert "unit_of_inference" in text
-    assert config.margin_for("mean_loss") == 2.0
+    assert "inference" in text
+    margin = config.margin_for("mean_loss")
+    assert margin.lower == margin.upper == 2.0
     assert config.margin_for("cvar90_loss") is None

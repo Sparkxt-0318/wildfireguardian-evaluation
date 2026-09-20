@@ -2,7 +2,7 @@
   "seed": 20260919,
   "fixtures": {
     "paired_balanced.parquet": {
-      "checksum": "sha256:18631341130e001f8850bb2de6c04fb172e345550e34b7c800272d852938f811",
+      "checksum": "sha256:602a6401a0d659e54e07a892331bf1c2f728a57178d125ec1d7763be4be9dc29",
       "n_rows": 1440,
       "truth": {
         "true_mean_loss_difference": 0.6,
@@ -11,26 +11,26 @@
       "description": "clean, balanced, fully paired"
     },
     "missing_worlds.csv": {
-      "checksum": "sha256:bced53761b558401c80c39a537c25c529758b82cd7d3c506b7d15688d1485888",
+      "checksum": "sha256:09d643c55381193075195ea2e0be79f0579106d70b0b92bb69d0ef00dbee13c0",
       "n_rows": 800,
       "truth": {
         "true_mean_loss_difference": 1.2,
         "n_worlds": 24,
         "policy_b_missing_from": [
-          "w0019",
-          "w0011",
-          "w0009",
-          "w0003",
-          "w0002",
-          "w0008",
-          "w0007",
-          "w0022"
+          "u0019",
+          "u0011",
+          "u0009",
+          "u0003",
+          "u0002",
+          "u0008",
+          "u0007",
+          "u0022"
         ]
       },
       "description": "policy_b absent from the hardest worlds; unpaired analysis reverses"
     },
     "invalid_records.csv": {
-      "checksum": "sha256:2fd109c1133f5fe318735e7dd53423596db72016b1a74171bfd123340917a2f4",
+      "checksum": "sha256:d196c72e789225d6e449b2b7b66c6836393a9c49d488da09fc69f33bef87e553",
       "n_rows": 74,
       "expected_validation_errors": [
         "duplicate_records",
@@ -38,6 +38,24 @@
         "non_binary_outcome"
       ],
       "description": "must fail validation"
+    },
+    "failed_runs.parquet": {
+      "checksum": "sha256:8ffa200757ecbfd62ae2e3287a609578644efb0bc4690d849ed14c87893b82b4",
+      "n_rows": 640,
+      "truth": {
+        "true_mean_loss_difference": 0.8,
+        "n_units": 20,
+        "crashed_units": [
+          "u0001",
+          "u0002",
+          "u0005",
+          "u0013",
+          "u0012",
+          "u0015"
+        ],
+        "mechanism": "MNAR"
+      },
+      "description": "policy_b crashes on the hardest units; rows present with null outcomes"
     }
   }
 }

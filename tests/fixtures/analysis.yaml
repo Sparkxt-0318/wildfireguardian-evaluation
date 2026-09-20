@@ -1,34 +1,44 @@
 # Fixture analysis config. See docs/STATISTICAL_PROTOCOL.md for what each
-# choice commits you to.
+# choice commits you to, and docs/ESTIMANDS.md for what it makes the numbers mean.
 label: fixture analysis
-unit_of_inference: world
+analysis_status: exploratory
+
+inference:
+  primary_unit: world_id
+  nested_units: [event_id, resident_id]
 
 metrics:
   - name: mean_loss
     column: loss
     estimator: mean
-    level: event
+    level: event_id
     direction: lower_is_better
+    role: primary
+    bounds: {lower: 0.0}
   - name: cvar90_loss
     column: loss
     estimator: cvar
-    level: event
-    params: {alpha: 0.9, tail: upper}
+    level: event_id
+    tail: harmful
+    params: {alpha: 0.9}
     direction: lower_is_better
+    role: secondary
   - name: success_rate
     column: mission_success
     estimator: mean
-    level: resident
+    level: resident_id
     direction: higher_is_better
+    role: secondary
+    bounds: {lower: 0.0, upper: 1.0}
 
 aggregation:
-  resident_to_event:
+  resident_id->event_id:
     loss: mean
     mission_success: mean
     travel_time: mean
     resource_use: sum
     responder_exposure: sum
-  event_to_world:
+  event_id->world_id:
     loss: mean
     mission_success: mean
   default_rule: mean
@@ -37,26 +47,47 @@ comparison:
   baseline: policy_a
   candidates: [policy_b]
   paired: true
-  require_common_worlds: true
+  require_common_units: true
 
 bootstrap:
   n_resamples: 1000
-  cluster_level: world
   seed: 20260919
   confidence_level: 0.95
   method: percentile
+  hierarchical: false
 
 equivalence:
   alpha: 0.05
   margins:
-    mean_loss: 0.40
+    mean_loss:
+      lower: 0.40
+      upper: 0.40
+      scale: absolute
+      source: "fixture margin, fixed in generate_fixtures.py before any data existed"
   non_inferiority: [mean_loss]
 
-strata: [landscape, mobility, fire_regime, resource_level]
+multiplicity:
+  secondary_correction: holm
+  exploratory_correction: none
+
+strata: [difficulty, scale, regime, capacity]
+
+filters:
+  include: {}
+  exclude: {}
+  exclusions: {}
 
 missing_data:
   policy: drop_record
-  require_complete_worlds: true
+  require_complete_units: true
   max_count_imbalance: 0.2
+  status_column: run_status
+  status_handling:
+    completed: completed
+    crashed: failure
+    timeout: failure
+    infeasible: excluded_documented
+    not_evaluated: missing
+  assumed_mechanism: unknown
 
 failure_column: failure_reason

@@ -1,4 +1,17 @@
-"""Version and code-provenance helpers."""
+"""Version and code-provenance helpers.
+
+What ``code_version()`` asserts, precisely: *the package source in this
+checkout matches the named commit*.  It reports ``+dirty`` when a tracked file
+under ``src/`` or ``pyproject.toml`` differs from that commit, and it ignores
+everything else -- regenerating a report, adding scratch files, or editing docs
+does not make the scientific code look changed.
+
+What it does **not** cover is tracked separately in
+:class:`wg_eval.provenance.ReproducibilityManifest`: the analysis
+configuration, the source data, and the preregistered protocol each get their
+own hash, because each can change without the others and a single version
+string would hide which one moved.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +19,11 @@ import subprocess
 from pathlib import Path
 
 __version__ = "0.1.0"
+
+#: Bumped when the *rendering* of a report changes without the numbers changing.
+#: Recorded separately from ``__version__`` so a reader can tell a reformatted
+#: report from a re-analysed one.
+REPORT_GENERATOR_VERSION = "report-1.0.0"
 
 
 def _git_describe() -> str | None:

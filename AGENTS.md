@@ -20,24 +20,30 @@ Agent A's outputs live in `docs/`:
 
 | Decision | Recorded in |
 |---|---|
-| Unit of inference | `STATISTICAL_PROTOCOL.md` §1 |
-| Nesting structure and what may never be a replicate | `STATISTICAL_PROTOCOL.md` §2 |
-| Primary and secondary metrics, and their levels | `METRIC_REGISTRY.md` |
-| Bootstrap design: unit, method, resamples, seeds | `STATISTICAL_PROTOCOL.md` §5 |
-| Equivalence methodology and how margins are set | `STATISTICAL_PROTOCOL.md` §6 |
-| Missing-data rules | `STATISTICAL_PROTOCOL.md` §7 |
+| Estimands: population, conditioning, aggregation, contrast | `ESTIMANDS.md` |
+| Unit of inference, and how the declaration is checked | `STATISTICAL_PROTOCOL.md` §1 |
+| Nesting, and what may never be a replicate | `STATISTICAL_PROTOCOL.md` §2 |
+| Metrics, orientations, tails and roles | `METRIC_REGISTRY.md` |
+| Bootstrap design, and where each method should not be trusted | `STATISTICAL_PROTOCOL.md` §5 |
+| Standards for coverage claims | `STATISTICAL_PROTOCOL.md` §6 |
+| Missing data, run status and mechanisms | `STATISTICAL_PROTOCOL.md` §7 |
+| Equivalence and non-inferiority methodology | `EQUIVALENCE_AND_NONINFERIORITY.md` |
+| Declared families and corrections | `MULTIPLICITY.md` |
 | Assumptions that must hold | `ASSUMPTIONS.md` |
 | Decisions and rejected alternatives | `DECISIONS.md` |
 
 **Standing obligations**
 
-- Name the estimand before the estimator. "Mean loss" is not an estimand;
-  "the mean, over events, of the per-event mean loss, over the population of
-  worlds the sampled worlds represent" is.
+- Name the estimand before the estimator, in all six parts
+  ([`docs/ESTIMANDS.md`](docs/ESTIMANDS.md)). "Mean loss" is not an estimand.
 - Never allow a default margin. A margin that nobody chose is a margin nobody
   will defend.
+- Say what a conclusion is conditioned on. A paired estimate restricted to
+  shared units is not an estimate for the target population, and the protocol
+  says so wherever it appears.
 - When a design cannot answer a question, say so in the protocol rather than
   letting the analysis produce a number anyway.
+- No claim of calibration without a Monte Carlo interval around it.
 
 ## Agent B — Implementation Engineer
 
@@ -49,9 +55,19 @@ maintains the library in `src/wg_eval/`.
 - Implement what the protocol specifies. Where the code must choose something
   the protocol left open, either raise (preferred) or implement the
   conservative option and open a decision for Agent A.
-- Make invalid analyses hard to express. `bootstrap.cluster_level: resident`
-  is rejected at config load; equivalence without a margin raises
-  `MarginRequired`. A warning in the docs is not a guard.
+- Make invalid analyses hard to express. `inference.primary_unit: resident_id`
+  is rejected at config load; a structure the records contradict raises;
+  equivalence without a margin raises `MarginRequired`; a `params.tail` that
+  contradicts the declared orientation is refused. A warning in the docs is not
+  a guard.
+- **Every configuration key must be read by something.** A key that is parsed
+  and ignored is worse than an absent one: `comparison.paired` was silently
+  unused before v0.1.0, so a config asking for an unpaired analysis received a
+  paired one under an unpaired label.
+- **Production code is not its own oracle.** Every estimator needs a
+  hand-computed case in `tests/test_reference_calculations.py`, with the
+  arithmetic written out. The CVaR floating-point defect looked exactly like its
+  specification and was found only that way.
 - Every result-producing path attaches provenance. A number without a
   fingerprint is a bug, not a cosmetic issue.
 - Keep the library domain-free. If a symbol, comment or default would not make
@@ -73,11 +89,17 @@ a competent analysis reach a wrong conclusion, in `src/wg_eval/synth/`.
 - A scenario asserts **both** directions. `trap_reproduced` must be true — if
   the wrong analysis is not actually fooled, the scenario is not testing
   anything — and `defence_worked` must be true.
-- Prefer measurement to rhetoric. "The naive interval is too narrow" is an
-  opinion; "its nominal-95% interval covers the truth 62% of the time over 100
-  replications" is a result. See `coverage_study`.
+- Every scenario also states **what the defended analysis still cannot
+  conclude**. A defence that looks total is a defence nobody will question.
+- Prefer measurement to rhetoric, and quantify the measurement. "The naive
+  interval is too narrow" is an opinion; "62% coverage over 150 replications,
+  Wilson interval [54%, 70%]" is a result. A bare percentage from a simulation
+  is halfway between the two.
 - When a defence fails, the finding goes to Agent A as a protocol question
   before it goes to Agent B as a bug.
+- Mutants live in `wg_eval.mutation`: deliberate statistical errors with the
+  check that should catch each one. An undetected mutant is a hole in the suite
+  and is reported as one, never omitted.
 
 ---
 

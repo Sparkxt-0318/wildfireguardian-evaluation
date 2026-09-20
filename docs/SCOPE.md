@@ -4,17 +4,22 @@
 
 | Area | What is included |
 |---|---|
-| Schema validation | Structure, dtypes, keys, nesting, cluster counts, policy coverage, strata |
-| Aggregation | Declared two-step roll-up: observation → event → world |
-| Point estimation | Means, medians, sums, quantiles, CVaR, trimmed means, exceedance rates, counts |
-| Uncertainty | Cluster bootstrap (percentile, basic, BCa) at world or event level |
-| Comparison | Paired differences between policies on shared clusters |
-| Hypothesis framing | Superiority, equivalence (TOST), non-inferiority |
-| Stratification | Per-stratum comparison, allocation ledger, heterogeneity detection |
-| Failure analysis | Failure-mode composition and paired per-world shifts |
-| Reporting | Markdown, JSON and CSV, with full provenance |
-| Adversarial testing | Synthetic scenarios with known truth |
-| CLI | `validate-results`, `compare`, `bootstrap`, `report`, plus support commands |
+| Inference structure | Declared primary unit and nested levels, checked against the records |
+| Schema validation | Structure, dtypes, keys, nesting, unit counts, policy coverage, strata, run status, bounds |
+| Aggregation | Declared step-by-step roll-up along the declared hierarchy |
+| Point estimation | Means, medians, sums, quantiles, CVaR, trimmed means, exceedance rates, counts, each with a fixed finite-sample convention |
+| Metric semantics | Orientation, harmful tail, declared support, analysis role |
+| Uncertainty | Cluster bootstrap (percentile, basic, BCa) at the declared unit; optional two-stage |
+| Coverage validation | Empirical coverage with Monte Carlo SE and Wilson intervals |
+| Comparison | Paired differences on shared units, with the estimand's conditioning stated |
+| Hypothesis framing | Superiority, equivalence (TOST, asymmetric margins), non-inferiority |
+| Multiplicity | Declared families by analysis role; Holm, Bonferroni or none |
+| Missing data | Run-status taxonomy, declared handling, mechanism, imputation bounds, overlap check |
+| Stratification | Per-stratum contrasts, allocation ledger, redundancy diagnostics, disagreement detection |
+| Failure analysis | Failure-mode composition and paired per-unit shifts |
+| Reporting | Markdown, JSON, CSV and a reproducibility manifest, with enforced wording |
+| Adversarial testing | Sixteen synthetic scenarios with known truth; eleven mutation tests |
+| CLI | `validate-results`, `compare`, `bootstrap`, `report`, `ledger`, plus support commands |
 
 ## Out of scope
 
@@ -41,7 +46,10 @@ claim to.
 | Not included | Why | Where it would go |
 |---|---|---|
 | Parametric mixed models (`lmer`-style) | The bootstrap answers the same questions with fewer distributional assumptions. Worth adding as a cross-check, not as the primary method. | ROADMAP R4 |
-| Multiplicity correction | Requires a declared family the library cannot infer. The family is made visible instead. | Protocol §9 |
+| Studentized bootstrap | Best coverage in theory; needs a variance estimate per replicate, which for CVaR means a nested bootstrap. The method name is rejected rather than silently substituted. | ROADMAP R9 |
+| Weighted units | A sampling weight and an intra-unit probability cannot be told apart from a column of numbers, and applying either silently changes the estimand. Refused. | `ESTIMANDS.md` |
+| Adjusted confidence intervals for multiplicity | A Holm-adjusted interval is not a rescaling of an unadjusted one. p-values are adjusted; intervals are marginal and labelled as such. | `MULTIPLICITY.md` |
+| Causal adjustment for allocation imbalance | The ledger reports imbalance; correcting it requires a model of the allocation the library does not have. | `STATISTICAL_PROTOCOL.md` §13 |
 | Bayesian estimation | A coherent alternative, but mixing two inferential frameworks in one report invites cherry-picking between them. | ROADMAP R5 |
 | Sequential / group-sequential designs | Needs a stopping rule declared before data collection, which is a property of the producer's process, not of this library. | ROADMAP R6 |
 | Causal identification beyond pairing | Pairing handles world-level confounding. Within-world confounding needs a design this library cannot see. | ASSUMPTIONS A3 |

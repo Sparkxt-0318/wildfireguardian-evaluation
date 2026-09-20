@@ -16,8 +16,8 @@ def workspace(records, tmp_path):
     results = tmp_path / "results.parquet"
     write_records(records, results)
     config = tmp_path / "analysis.yaml"
-    config.write_text(DEFAULT_CONFIG.replace("[landscape, mobility, fire_regime, resource_level]",
-                                             "[landscape, mobility]"))
+    config.write_text(DEFAULT_CONFIG.replace("[difficulty, scale, regime, capacity]",
+                                             "[difficulty, scale]"))
     return tmp_path, results, config
 
 
@@ -63,12 +63,13 @@ def test_validate_strict_treats_warnings_as_failures(records, tmp_path, capsys):
     assert main(["validate-results", str(path), "--strict"]) == 1
 
 
-def test_compare_prints_verdicts(workspace, capsys):
+def test_compare_prints_findings(workspace, capsys):
     _, results, config = workspace
     assert main(["compare", str(results), str(config), "--metric", "mean_loss"]) == 0
     out = capsys.readouterr().out
-    assert "unit of inference: world" in out
+    assert "world_id > event_id > resident_id" in out
     assert "mean_loss" in out
+    assert "analysis status" in out
 
 
 def test_compare_json_and_markdown(workspace, capsys):
@@ -77,31 +78,44 @@ def test_compare_json_and_markdown(workspace, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["comparisons"][0]["metric"]["name"] == "mean_loss"
     assert main(["compare", str(results), str(config), "--metric", "mean_loss", "--markdown"]) == 0
-    assert "## 2. Results" in capsys.readouterr().out
+    assert "## 2. Findings" in capsys.readouterr().out
 
 
 def test_compare_with_stratification(workspace, capsys):
     _, results, config = workspace
     assert main(["compare", str(results), str(config), "--metric", "mean_loss",
-                 "--stratify", "landscape"]) == 0
-    assert "by landscape" in capsys.readouterr().out
+                 "--stratify", "difficulty"]) == 0
+    assert "by difficulty" in capsys.readouterr().out
 
 
 def test_bootstrap_reports_per_policy_intervals(workspace, capsys):
     _, results, config = workspace
     assert main(["bootstrap", str(results), str(config), "--metric", "mean_loss"]) == 0
     out = capsys.readouterr().out
-    assert "n_clusters" in out
+    assert "n_units" in out
     assert "must not be eyeballed for overlap" in out
 
 
-def test_report_writes_all_three_files(workspace, tmp_path, capsys):
+def test_report_writes_every_artifact_and_passes_the_wording_audit(workspace, tmp_path, capsys):
     _, results, config = workspace
     outdir = tmp_path / "reports"
     assert main(["report", str(results), str(config), "--out", str(outdir)]) == 0
     assert (outdir / "report.md").exists()
     assert (outdir / "report.json").exists()
     assert (outdir / "report_summary.csv").exists()
+    assert (outdir / "report_manifest.json").exists()
+    out = capsys.readouterr().out
+    assert "reproducibility manifest" in out
+    assert "analysis_config_hash" in out
+
+
+def test_ledger_command_shows_what_each_policy_was_given(workspace, capsys):
+    _, results, config = workspace
+    assert main(["ledger", str(results), str(config)]) == 0
+    out = capsys.readouterr().out
+    assert "unit of inference: world_id" in out
+    assert "shared by every policy" in out
+    assert "Reported, not corrected" in out
 
 
 def test_synth_writes_records_and_their_truth(tmp_path, capsys):
